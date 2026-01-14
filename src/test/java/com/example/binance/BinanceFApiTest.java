@@ -25,8 +25,8 @@ public class BinanceFApiTest {
 
     @Test
     void getKlineData_shouldWork() {
-        String startTimeStr = "2025-01-01 00:00:00";
-        String endTimeStr = "2025-01-01 23:59:59";
+        String startTimeStr = "2025-01-02 00:00:00";
+        String endTimeStr = "2025-01-02 23:59:59";
         DateTime startTime = new DateTime(startTimeStr, DatePattern.NORM_DATETIME_FORMAT);
         DateTime endTime = new DateTime(endTimeStr, DatePattern.NORM_DATETIME_FORMAT);
         String symbol = "BTCUSDT";

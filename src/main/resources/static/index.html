@@ -8,26 +8,25 @@
     <script src="https://unpkg.com/vue@3"></script>
     <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     <style>
-        /* ====== 全局 ====== */
         * {
             box-sizing: border-box;
         }
 
         body {
             margin: 0;
-            font-family: Arial, sans-serif;
             background: #0f172a;
             color: #e5e7eb;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         }
 
-        /* ====== 布局 ====== */
+        /* ===== 主布局 ===== */
         #app {
             display: flex;
             height: 100vh;
             overflow: hidden;
         }
 
-        .left-panel {
+        .left {
             width: 320px;
             background: #020617;
             border-right: 1px solid #1e293b;
@@ -35,20 +34,19 @@
             overflow-y: auto;
         }
 
-        .right-panel {
+        .right {
             flex: 1;
             position: relative;
         }
 
-        /* ====== 标题 ====== */
-        .title {
+        /* ===== 左侧通用 ===== */
+        .left h1 {
+            margin: 0 0 16px;
             text-align: center;
-            font-size: 18px;
-            margin-bottom: 16px;
+            font-size: 16px;
             color: #cbd5f5;
         }
 
-        /* ====== 卡片 ====== */
         .card {
             background: rgba(2, 6, 23, 0.85);
             border: 1px solid #1e293b;
@@ -65,17 +63,14 @@
             color: #cbd5f5;
         }
 
-        /* ====== 表单 ====== */
-        .field {
+        /* ===== 表单 ===== */
+        label {
             display: flex;
             flex-direction: column;
-            margin-bottom: 10px;
-        }
-
-        .field label {
+            gap: 4px;
             font-size: 12px;
+            margin-bottom: 10px;
             color: #94a3b8;
-            margin-bottom: 4px;
         }
 
         input {
@@ -87,82 +82,37 @@
             font-size: 12px;
         }
 
-        /* ====== 按钮 ====== */
-        .btn {
+        /* ===== 按钮 ===== */
+        button {
             background: #334155;
             border: none;
             color: #e5e7eb;
-            padding: 6px;
             font-size: 12px;
+            padding: 6px;
             border-radius: 4px;
             cursor: pointer;
         }
 
-        .btn:hover {
+        button:hover {
             background: #475569;
         }
 
-        .btn.primary {
-            background: #1e293b;
-        }
-
-        .btn.primary:hover {
-            background: #334155;
-        }
-
-        .btn.danger {
-            color: #ef4444;
-        }
-
-        /* ====== 工具按钮 ====== */
-        .tool-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-
-        .tool-grid .btn {
-            flex: 1 1 48%;
-        }
-
-        .tool-grid .btn.full {
-            flex: 1 1 100%;
-        }
-
-        .btn.active {
-            background: #475569;
+        button.active {
             outline: 1px solid #3b82f6;
         }
 
-        /* ====== 信息行 ====== */
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            margin-bottom: 6px;
-        }
-
-        .up {
-            color: #22c55e;
-        }
-
-        .down {
-            color: #ef4444;
-        }
-
-        /* ====== 图表 ====== */
-        .chart {
+        /* ===== 图表 & 覆盖层 ===== */
+        .right > div:first-child,
+        .right svg {
             position: absolute;
             inset: 0;
         }
 
-        .overlay {
-            position: absolute;
-            inset: 0;
+        .right svg {
             z-index: 20;
         }
 
-        .tooltip {
+        .right > div:last-child {
             position: absolute;
             z-index: 30;
             min-width: 180px;
@@ -173,295 +123,400 @@
             font-size: 12px;
             pointer-events: none;
         }
+
+        .right > div:last-child > div > div {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
     </style>
 </head>
 
-<body class="bg-primary text-text font-sans min-h-screen m-0 p-0">
-    <div id="app" class="flex h-screen overflow-hidden">
-        <!-- 左侧功能区 -->
-        <div class="left-panel">
-            <div class="title">BTCUSDT 5M K线管理</div>
+<body>
+<div id="app">
+    <!-- 左侧面板 -->
+    <div class="left">
+        <h1>币安BTCUSDT永续合约</h1>
 
-            <div class="card">
-                <h3>绘图工具</h3>
-                <div class="tool-grid">
-                    <button class="btn" :class="{active: activeTool==='cursor'}"
-                        @click="setTool('cursor')">查看K线</button>
-                    <button class="btn" :class="{active: activeTool==='trendline'}"
-                        @click="setTool('trendline')">趋势线</button>
-                    <button class="btn" :class="{active: activeTool==='rect'}" @click="setTool('rect')">矩形</button>
-                    <button class="btn" :class="{active: activeTool==='rr'}" @click="setTool('rr')">盈亏比</button>
-                    <button class="btn danger full" @click="clearAllOverlays">清除所有绘图</button>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>K线加载</h3>
-
-                <div class="field">
-                    <label>日期</label>
-                    <input type="date" v-model="targetDate">
-                </div>
-
-                <div style="display:flex; gap:6px;">
-                    <input type="number" v-model.number="targetStep" min="1" max="288" style="flex:1">
-                    <button class="btn primary" @click="loadKlineByStep">加载</button>
-                </div>
+        <div class="card">
+            <h3>绘图工具</h3>
+            <div>
+                <button :class="{active: activeTool==='cursor'}" @click="setTool('cursor')">查看K线</button>
+                <button :class="{active: activeTool==='trendline'}" @click="setTool('trendline')">趋势线</button>
+                <button :class="{active: activeTool==='rect'}" @click="setTool('rect')">矩形</button>
+                <button :class="{active: activeTool==='rr'}" @click="setTool('rr')">盈亏比</button>
+                <button @click="clearAllOverlays">清除所有绘图</button>
             </div>
         </div>
 
-
-        <!-- 右侧图表区 -->
-        <div class="right-panel" ref="chartWrapper">
-            <div class="chart" ref="chartEl"></div>
-
-            <svg class="overlay" ref="overlayEl" :style="{pointerEvents: activeTool==='cursor'?'none':'auto'}"
-                @pointerdown="onOverlayPointerDown" @pointermove="onOverlayPointerMove" @pointerup="onOverlayPointerUp">
-            </svg>
-            <div class="tooltip" ref="tooltipEl"
-                :style="{top: tooltipPos.top+'px', left: tooltipPos.left+'px', opacity: tooltipPos.opacity}">
-                <div v-if="currentKline" class="space-y-1">
-                    <div class="flex justify-between">
-                        <span class="text-textLight">时间</span>
-                        <span class="text-textHighlight">{{ formatTimestamp(currentKline[0]) }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-textLight">开盘</span>
-                        <span class="text-textHighlight">{{ currentKline[1] }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-textLight">最高</span>
-                        <span class="text-textHighlight">{{ currentKline[2] }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-textLight">最低</span>
-                        <span class="text-textHighlight">{{ currentKline[3] }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-textLight">收盘</span>
-                        <span :class="currentKline[4] >= currentKline[1] ? 'text-up' : 'text-down'">
-                            {{ currentKline[4] }}
-                        </span>
-                    </div>
-                </div>
+        <div class="card">
+            <h3>K线加载</h3>
+            <div style="display: flex;flex-direction: column;">
+                <label>起始时间
+                    <input type="datetime-local" v-model="startTime">
+                </label>
+                <label>结束时间
+                    <input type="datetime-local" v-model="endTime">
+                </label>
+                <button @click="loadKlineByDateRange(0, 0, 0)">加载数据</button>
+            </div>
+            <br>
+            <label>快捷操作
+                <input type="number" step="5" min="5" v-model="step">
+            </label>
+            <div style="display: flex;flex-direction: row;gap: 2px;">
+                <button @click="loadKlineByDateRange(-1, -1, step)">起始前移{{step}}m</button>
+                <button @click="loadKlineByDateRange(-1, 1, step)">起始后移{{step}}m</button>
+                <button @click="loadKlineByDateRange(1, -1, step)">结束前移{{step}}m</button>
+                <button @click="loadKlineByDateRange(1, 1, step)">结束后移{{step}}m</button>
             </div>
         </div>
     </div>
 
-    <script>
-        const { createApp } = Vue
+    <!-- 右侧图表 -->
+    <div class="right" ref="chartWrapper">
+        <!-- 图表容器 -->
+        <div ref="chartEl"></div>
 
-        createApp({
-            data() {
-                return {
-                    // 图表核心实例
-                    chart: null,
-                    candleSeries: null,
+        <!-- SVG Overlay -->
+        <svg ref="overlayEl"
+             :style="{pointerEvents: activeTool==='cursor'?'none':'auto'}"
+             @pointerdown="onOverlayPointerDown"
+             @pointermove="onOverlayPointerMove"
+             @pointerup="onOverlayPointerUp">
+        </svg>
 
-                    // 业务数据
-                    targetDate: '',        // 统一的目标日期
-                    targetStep: 108,       // 手动输入的目标步数
-                    currentStep: 0,        // 当前回放步数
-                    maxStep: 288,          // 最大步数
-                    isLoading: false,      // 加载状态
-                    operateMsg: '',        // 操作提示信息
-                    operateSuccess: false, // 操作是否成功
-                    currentKlineData: [],  // 当前K线数据
-                    currentKline: null,    // 悬浮的当前K线
-                    tooltipPos: {          // 悬浮提示位置
-                        top: 0,
-                        left: 0,
-                        opacity: 0
-                    },
-                    // 绘图相关
-                    overlayDragging: false,
-                    overlayTempPoint: null,
-                    trendLines: [],        // 趋势线数据
-                    activeTool: 'cursor',  // cursor | trendline | rect | rr
-                    rects: [],             // 矩形数据
-                    rectTemp: null,        // 临时矩形数据
-                    rrTools: [],           // 盈亏比工具数据
-                    rrTemp: null,          // 临时盈亏比数据
-                    currentMouseX: 0,      // 当前鼠标X坐标
-                    currentMouseY: 0,      // 当前鼠标Y坐标
+        <!-- Tooltip -->
+        <div ref="tooltipEl"
+             :style="{top: tooltipPos.top+'px', left: tooltipPos.left+'px', opacity: tooltipPos.opacity}">
+            <div v-if="currentKline">
+                <div><span>时间</span><b>{{ formatTimestamp(currentKline["openTime"]) }}</b></div>
+                <div><span>开盘</span><b>{{ currentKline["openPrice"] }}</b></div>
+                <div><span>最高</span><b>{{ currentKline["highPrice"] }}</b></div>
+                <div><span>最低</span><b>{{ currentKline["lowPrice"] }}</b></div>
+                <div>
+                    <span>收盘</span>
+                    <b :style='{color: currentKline["closePrice"] >= currentKline["openPrice"] ? "#22c55e" : "#ef4444"}'>
+                        {{ currentKline["closePrice"] }}
+                    </b>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-                    ema20Series: null,
+<script>
+    const {createApp} = Vue
 
-                    // API基础地址
-                    apiBaseUrl: 'http://localhost:8880'
-                };
-            },
-            mounted() {
-                // 初始化图表
-                this.initChart();
-                // 默认填充当天日期
-                const today = new Date();
-                const formattedDate = today.toISOString().split('T')[0];
-                this.targetDate = formattedDate;
-                // 初始化十字光标监听
-                this.initCrosshairListener();
-                // 窗口大小监听
-                window.addEventListener('resize', this.handleWindowResize);
-                // 初始化Overlay
-                this.initOverlay();
-            },
-            unmounted() {
-                window.removeEventListener('resize', this.handleWindowResize);
-                // 移除overlay的resize监听
-                window.removeEventListener('resize', this.resizeOverlay);
-                // 移除图表监听
-                if (this.chart) {
-                    this.chart.timeScale().unsubscribeVisibleTimeRangeChange(this.renderOverlay);
-                    this.chart.unsubscribeCrosshairMove(this.renderOverlay);
-                }
-            },
-            methods: {
-                /**
-                 * 设置当前激活的绘图工具
-                 */
-                setTool(tool) {
-                    this.activeTool = tool;
+    createApp({
+        data() {
+            return {
+                // 图表核心实例
+                chart: null,
+                candleSeries: null,
 
-                    document.body.style.cursor =
-                        tool === 'cursor' ? 'default' : 'crosshair';
+                // 日期
+                startTime: '2025-01-01T00:00',
+                endTime: '2025-01-01T00:10',
 
-                    this.overlayTempPoint = null;
-                    this.rectTemp = null;
-                    this.rrTemp = null;
+                // 业务数据
+                step: 5,
+                isLoading: false,      // 加载状态
+                operateMsg: '',        // 操作提示信息
+                operateSuccess: false, // 操作是否成功
+                currentKlineData: [],  // 当前K线数据
+                currentKline: null,    // 悬浮的当前K线
+                tooltipPos: {          // 悬浮提示位置
+                    top: 0,
+                    left: 0,
+                    opacity: 0
                 },
-                /**
-                 * 初始化图表
-                 */
-                initChart() {
-                    if (!this.$refs.chartEl) return;
 
-                    // 创建图表实例
-                    this.chart = LightweightCharts.createChart(this.$refs.chartEl, {
-                        layout: { background: { color: '#020617' }, textColor: '#cbd5f5' },
-                        grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
-                        timeScale: { timeVisible: true, secondsVisible: false },
-                        crosshair: {
-                            horzLine: {
-                                color: '#999',
-                                style: LightweightCharts.LineStyle.Dashed,
-                            },
-                            vertLine: {
-                                visible: true,
-                                color: '#666',
-                                style: LightweightCharts.LineStyle.Dashed,
-                            },
+                // 绘图相关
+                overlayDragging: false,
+                overlayTempPoint: null,
+                trendLines: [],        // 趋势线数据
+                activeTool: 'cursor',  // cursor | trendline | rect | rr
+                rects: [],             // 矩形数据
+                rectTemp: null,        // 临时矩形数据
+                rrTools: [],           // 盈亏比工具数据
+                rrTemp: null,          // 临时盈亏比数据
+                currentMouseX: 0,      // 当前鼠标X坐标
+                currentMouseY: 0,      // 当前鼠标Y坐标
+
+                ema20Series: null,
+
+                // API基础地址
+                apiBaseUrl: 'http://localhost:8765'
+            };
+        },
+        mounted() {
+            // 初始化图表
+            this.initChart();
+            // 默认填充当天日期
+            const today = new Date();
+            this.targetDate = today.toISOString().split('T')[0];
+            // 初始化十字光标监听
+            this.initCrosshairListener();
+            // 窗口大小监听
+            window.addEventListener('resize', this.handleWindowResize);
+            // 初始化Overlay
+            this.initOverlay();
+        },
+        unmounted() {
+            window.removeEventListener('resize', this.handleWindowResize);
+            // 移除overlay的resize监听
+            window.removeEventListener('resize', this.resizeOverlay);
+            // 移除图表监听
+            if (this.chart) {
+                this.chart.timeScale().unsubscribeVisibleTimeRangeChange(this.renderOverlay);
+                this.chart.unsubscribeCrosshairMove(this.renderOverlay);
+            }
+        },
+        methods: {
+            /**
+             * 设置当前激活的绘图工具
+             */
+            setTool(tool) {
+                this.activeTool = tool;
+
+                document.body.style.cursor =
+                    tool === 'cursor' ? 'default' : 'crosshair';
+
+                this.overlayTempPoint = null;
+                this.rectTemp = null;
+                this.rrTemp = null;
+            },
+            /**
+             * 初始化图表
+             */
+            initChart() {
+                if (!this.$refs.chartEl) return;
+
+                // 创建图表实例
+                this.chart = LightweightCharts.createChart(this.$refs.chartEl, {
+                    layout: {background: {color: '#020617'}, textColor: '#cbd5f5'},
+                    grid: {vertLines: {color: '#1e293b'}, horzLines: {color: '#1e293b'}},
+                    timeScale: {timeVisible: true, secondsVisible: false},
+                    crosshair: {
+                        horzLine: {
+                            color: '#999',
+                            style: LightweightCharts.LineStyle.Dashed,
                         },
-                        height: this.$refs.chartEl.clientHeight
-                    });
+                        vertLine: {
+                            visible: true,
+                            color: '#666',
+                            style: LightweightCharts.LineStyle.Dashed,
+                        },
+                    },
+                    height: this.$refs.chartEl.clientHeight
+                });
 
-                    // 创建K线系列
-                    this.candleSeries = this.chart.addSeries(LightweightCharts.CandlestickSeries, {
-                        upColor: '#22c55e',
-                        downColor: '#ef4444',
-                        borderUpColor: '#22c55e',
-                        borderDownColor: '#ef4444',
-                        wickUpColor: '#22c55e',
-                        wickDownColor: '#ef4444'
-                    });
+                // 创建K线系列
+                this.candleSeries = this.chart.addSeries(LightweightCharts.CandlestickSeries, {
+                    upColor: '#22c55e',
+                    downColor: '#ef4444',
+                    borderUpColor: '#22c55e',
+                    borderDownColor: '#ef4444',
+                    wickUpColor: '#22c55e',
+                    wickDownColor: '#ef4444'
+                });
 
-                    // 创建EMA20系列
-                    this.ema20Series = this.chart.addSeries(
-                        LightweightCharts.LineSeries,
-                        {
-                            color: 'rgba(255,255,0,0.6)', // 蓝色，略浅
-                            lineWidth: 2,
-                        }
-                    );
-                },
-                calculateEMA(data, period = 20) {
-                    const k = 2 / (period + 1);
-                    let ema = null;
+                // 创建EMA20系列
+                this.ema20Series = this.chart.addSeries(
+                    LightweightCharts.LineSeries,
+                    {
+                        color: 'rgba(255,255,0,0.6)', // 蓝色，略浅
+                        lineWidth: 2,
+                    }
+                );
+            },
+            calculateEMA(data, period = 20) {
+                const k = 2 / (period + 1);
+                let ema = null;
 
-                    return data.map((item, index) => {
-                        const close = item.close;
-                        if (ema === null) {
-                            ema = close; // 第一根
-                        } else {
-                            ema = close * k + ema * (1 - k);
-                        }
-                        return {
-                            time: item.time,
-                            value: Number(ema.toFixed(4))
-                        };
-                    });
-                },
-                /**
-                 * 初始化Overlay
-                 */
-                initOverlay() {
-                    this.resizeOverlay();
-                    // 确保只绑定一次resize事件
-                    window.removeEventListener('resize', this.resizeOverlay);
-                    window.addEventListener('resize', this.resizeOverlay);
+                return data.map((item, index) => {
+                    const close = item.close;
+                    if (ema === null) {
+                        ema = close; // 第一根
+                    } else {
+                        ema = close * k + ema * (1 - k);
+                    }
+                    return {
+                        time: item.time,
+                        value: Number(ema.toFixed(4))
+                    };
+                });
+            },
+            /**
+             * 初始化Overlay
+             */
+            initOverlay() {
+                this.resizeOverlay();
+                // 确保只绑定一次resize事件
+                window.removeEventListener('resize', this.resizeOverlay);
+                window.addEventListener('resize', this.resizeOverlay);
 
-                    // 图表变化时重绘
-                    this.chart.timeScale().subscribeVisibleTimeRangeChange(this.renderOverlay);
-                    this.chart.subscribeCrosshairMove(this.renderOverlay);
-                },
-                clearAllOverlays() {
-                    this.trendLines = [];
-                    this.rects = [];
-                    this.rrTools = [];
+                // 图表变化时重绘
+                this.chart.timeScale().subscribeVisibleTimeRangeChange(this.renderOverlay);
+                this.chart.subscribeCrosshairMove(this.renderOverlay);
+            },
+            clearAllOverlays() {
+                this.trendLines = [];
+                this.rects = [];
+                this.rrTools = [];
 
-                    this.overlayTempPoint = null;
-                    this.rectTemp = null;
-                    this.rrTemp = null;
+                this.overlayTempPoint = null;
+                this.rectTemp = null;
+                this.rrTemp = null;
 
-                    this.renderOverlay();
-                    this.showOperateMsg('已清除所有绘图元素', true);
-                },
-                /**
-                 * 调整Overlay大小
-                 */
-                resizeOverlay() {
-                    const el = this.$refs.overlayEl;
-                    const wrapper = this.$refs.chartWrapper;
-                    if (!el || !wrapper) return;
+                this.renderOverlay();
+                this.showOperateMsg('已清除所有绘图元素', true);
+            },
+            /**
+             * 调整Overlay大小
+             */
+            resizeOverlay() {
+                const el = this.$refs.overlayEl;
+                const wrapper = this.$refs.chartWrapper;
+                if (!el || !wrapper) return;
 
-                    el.setAttribute('width', wrapper.clientWidth);
-                    el.setAttribute('height', wrapper.clientHeight);
+                el.setAttribute('width', wrapper.clientWidth);
+                el.setAttribute('height', wrapper.clientHeight);
 
-                    this.renderOverlay();
-                },
-                /**
-                 * 渲染所有绘图元素
-                 */
-                renderOverlay() {
-                    const svg = this.$refs.overlayEl;
-                    if (!svg || !this.chart || !this.candleSeries) return;
+                this.renderOverlay();
+            },
+            /**
+             * 渲染所有绘图元素
+             */
+            renderOverlay() {
+                const svg = this.$refs.overlayEl;
+                if (!svg || !this.chart || !this.candleSeries) return;
 
-                    // 清空现有内容
-                    svg.innerHTML = '';
+                // 清空现有内容
+                svg.innerHTML = '';
 
-                    // 渲染趋势线
-                    this.renderTrendLines(svg);
-                    // 渲染矩形
-                    this.renderRects(svg);
-                    // 渲染盈亏比工具
-                    this.renderRRTools(svg);
-                    // 渲染临时绘制的元素
-                    this.renderTempElements(svg);
-                },
-                /**
-                 * 渲染趋势线
-                 */
-                renderTrendLines(svg) {
-                    this.trendLines.forEach(line => {
-                        // 增加严格的空值检查
-                        if (!line || !line.t1 || !line.t2 || !line.p1 || !line.p2) return;
+                // 渲染趋势线
+                this.renderTrendLines(svg);
+                // 渲染矩形
+                this.renderRects(svg);
+                // 渲染盈亏比工具
+                this.renderRRTools(svg);
+                // 渲染临时绘制的元素
+                this.renderTempElements(svg);
+            },
+            /**
+             * 渲染趋势线
+             */
+            renderTrendLines(svg) {
+                this.trendLines.forEach(line => {
+                    // 增加严格的空值检查
+                    if (!line || !line.t1 || !line.t2 || !line.p1 || !line.p2) return;
 
-                        const x1 = this.chart.timeScale().timeToCoordinate(line.t1);
-                        const x2 = this.chart.timeScale().timeToCoordinate(line.t2);
-                        const y1 = this.candleSeries.priceToCoordinate(line.p1);
-                        const y2 = this.candleSeries.priceToCoordinate(line.p2);
+                    const x1 = this.chart.timeScale().timeToCoordinate(line.t1);
+                    const x2 = this.chart.timeScale().timeToCoordinate(line.t2);
+                    const y1 = this.candleSeries.priceToCoordinate(line.p1);
+                    const y2 = this.candleSeries.priceToCoordinate(line.p2);
 
-                        if (x1 == null || x2 == null || y1 == null || y2 == null) return;
+                    if (x1 == null || x2 == null || y1 == null || y2 == null) return;
 
+                    const el = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    el.setAttribute('x1', x1);
+                    el.setAttribute('y1', y1);
+                    el.setAttribute('x2', x2);
+                    el.setAttribute('y2', y2);
+                    el.setAttribute('stroke', '#2962ff');
+                    el.setAttribute('stroke-width', '2');
+
+                    svg.appendChild(el);
+                });
+            },
+            /**
+             * 渲染矩形
+             */
+            renderRects(svg) {
+                this.rects.forEach(rect => {
+                    this.drawRect(svg, rect, '#f59e0b', 0.2);
+                });
+            },
+            /**
+             * 渲染盈亏比工具（优化样式和预览效果）
+             */
+            renderRRTools(svg) {
+                this.rrTools.forEach(rr => {
+                    // 增加严格的空值检查
+                    if (!rr || !rr.entryTime || !rr.entryPrice || !rr.stopTime || !rr.stopPrice) return;
+
+                    // 计算价格差值
+                    const priceDiff = Math.abs(rr.entryPrice - rr.stopPrice);
+                    const direction = rr.stopPrice > rr.entryPrice ? -1 : 1; // 1=向上，-1=向下
+
+                    // 绘制止损区域（红色）
+                    this.drawRRRect(svg, {
+                        t1: rr.entryTime,
+                        p1: rr.entryPrice,
+                        t2: rr.stopTime,
+                        p2: rr.stopPrice
+                    }, '#ef4444', 0.3);
+
+                    // 绘制1倍目标区域（蓝色）
+                    this.drawRRRect(svg, {
+                        t1: rr.entryTime,
+                        p1: rr.entryPrice + direction * priceDiff * 1,
+                        t2: rr.stopTime,
+                        p2: rr.entryPrice
+                    }, '#3b82f6', 0.2);
+
+                    // 绘制2倍目标区域（绿色）
+                    this.drawRRRect(svg, {
+                        t1: rr.entryTime,
+                        p1: rr.entryPrice + direction * priceDiff * 2,
+                        t2: rr.stopTime,
+                        p2: rr.entryPrice + direction * priceDiff * 1
+                    }, '#22c55e', 0.2);
+
+                    // 绘制3倍目标区域（黄色）
+                    this.drawRRRect(svg, {
+                        t1: rr.entryTime,
+                        p1: rr.entryPrice + direction * priceDiff * 3,
+                        t2: rr.stopTime,
+                        p2: rr.entryPrice + direction * priceDiff * 2
+                    }, '#eab308', 0.2);
+
+                    // 绘制入场线
+                    const entryX = this.chart.timeScale().timeToCoordinate(rr.entryTime);
+                    const entryY = this.candleSeries.priceToCoordinate(rr.entryPrice);
+                    if (entryX != null && entryY != null) {
+                        const entryLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        entryLine.setAttribute('x1', entryX - 10);
+                        entryLine.setAttribute('y1', entryY);
+                        entryLine.setAttribute('x2', entryX + 10);
+                        entryLine.setAttribute('y2', entryY);
+                        entryLine.setAttribute('stroke', '#ffffff');
+                        entryLine.setAttribute('stroke-width', '2');
+                        svg.appendChild(entryLine);
+                    }
+                });
+            },
+            /**
+             * 渲染临时绘制的元素（增强盈亏比预览效果）
+             */
+            renderTempElements(svg) {
+                // 渲染临时趋势线
+                if (this.overlayTempPoint && this.activeTool === 'trendline') {
+                    // 增加空值检查
+                    if (!this.overlayTempPoint.t || !this.overlayTempPoint.p) return;
+
+                    const time = this.chart.timeScale().coordinateToTime(this.currentMouseX);
+                    const price = this.candleSeries.coordinateToPrice(this.currentMouseY);
+                    if (!time || price == null) return;
+
+                    const x1 = this.chart.timeScale().timeToCoordinate(this.overlayTempPoint.t);
+                    const y1 = this.candleSeries.priceToCoordinate(this.overlayTempPoint.p);
+                    const x2 = this.chart.timeScale().timeToCoordinate(time);
+                    const y2 = this.candleSeries.priceToCoordinate(price);
+
+                    if (x1 != null && y1 != null && x2 != null && y2 != null) {
                         const el = document.createElementNS('http://www.w3.org/2000/svg', 'line');
                         el.setAttribute('x1', x1);
                         el.setAttribute('y1', y1);
@@ -469,65 +524,65 @@
                         el.setAttribute('y2', y2);
                         el.setAttribute('stroke', '#2962ff');
                         el.setAttribute('stroke-width', '2');
-
+                        el.setAttribute('stroke-dasharray', '5,5');
                         svg.appendChild(el);
-                    });
-                },
-                /**
-                 * 渲染矩形
-                 */
-                renderRects(svg) {
-                    this.rects.forEach(rect => {
-                        this.drawRect(svg, rect, '#f59e0b', 0.2);
-                    });
-                },
-                /**
-                 * 渲染盈亏比工具（优化样式和预览效果）
-                 */
-                renderRRTools(svg) {
-                    this.rrTools.forEach(rr => {
-                        // 增加严格的空值检查
-                        if (!rr || !rr.entryTime || !rr.entryPrice || !rr.stopTime || !rr.stopPrice) return;
+                    }
+                }
 
+                // 渲染临时矩形
+                if (this.rectTemp && this.activeTool === 'rect') {
+                    this.drawRect(svg, this.rectTemp, '#f59e0b', 0.1);
+                }
+
+                // 渲染临时盈亏比工具（完整预览效果）
+                if (this.rrTemp && this.activeTool === 'rr') {
+                    // 增加空值检查
+                    if (!this.rrTemp || !this.rrTemp.entryTime || !this.rrTemp.entryPrice) return;
+
+                    // 计算当前拖拽的止损价格
+                    const currentStopPrice = this.rrTemp.stopPrice || this.rrTemp.entryPrice;
+
+                    // 只在有价格差时才显示目标预览
+                    if (Math.abs(this.rrTemp.entryPrice - currentStopPrice) > 0) {
                         // 计算价格差值
-                        const priceDiff = Math.abs(rr.entryPrice - rr.stopPrice);
-                        const direction = rr.stopPrice > rr.entryPrice ? -1 : 1; // 1=向上，-1=向下
+                        const priceDiff = Math.abs(this.rrTemp.entryPrice - currentStopPrice);
+                        const direction = currentStopPrice > this.rrTemp.entryPrice ? -1 : 1;
 
-                        // 绘制止损区域（红色）
+                        // 预览止损区域（红色，透明度降低）
                         this.drawRRRect(svg, {
-                            t1: rr.entryTime,
-                            p1: rr.entryPrice,
-                            t2: rr.stopTime,
-                            p2: rr.stopPrice
-                        }, '#ef4444', 0.3);
+                            t1: this.rrTemp.entryTime,
+                            p1: this.rrTemp.entryPrice,
+                            t2: this.rrTemp.stopTime || this.rrTemp.entryTime,
+                            p2: currentStopPrice
+                        }, '#ef4444', 0.2);
 
-                        // 绘制1倍目标区域（蓝色）
+                        // 预览1倍目标区域（蓝色，透明度降低）
                         this.drawRRRect(svg, {
-                            t1: rr.entryTime,
-                            p1: rr.entryPrice + direction * priceDiff * 1,
-                            t2: rr.stopTime,
-                            p2: rr.entryPrice
-                        }, '#3b82f6', 0.2);
+                            t1: this.rrTemp.entryTime,
+                            p1: this.rrTemp.entryPrice + direction * priceDiff * 1,
+                            t2: this.rrTemp.stopTime || this.rrTemp.entryTime,
+                            p2: this.rrTemp.entryPrice
+                        }, '#3b82f6', 0.15);
 
-                        // 绘制2倍目标区域（绿色）
+                        // 预览2倍目标区域（绿色，透明度降低）
                         this.drawRRRect(svg, {
-                            t1: rr.entryTime,
-                            p1: rr.entryPrice + direction * priceDiff * 2,
-                            t2: rr.stopTime,
-                            p2: rr.entryPrice + direction * priceDiff * 1
-                        }, '#22c55e', 0.2);
+                            t1: this.rrTemp.entryTime,
+                            p1: this.rrTemp.entryPrice + direction * priceDiff * 2,
+                            t2: this.rrTemp.stopTime || this.rrTemp.entryTime,
+                            p2: this.rrTemp.entryPrice + direction * priceDiff * 1
+                        }, '#22c55e', 0.15);
 
-                        // 绘制3倍目标区域（黄色）
+                        // 预览3倍目标区域（黄色，透明度降低）
                         this.drawRRRect(svg, {
-                            t1: rr.entryTime,
-                            p1: rr.entryPrice + direction * priceDiff * 3,
-                            t2: rr.stopTime,
-                            p2: rr.entryPrice + direction * priceDiff * 2
-                        }, '#eab308', 0.2);
-
-                        // 绘制入场线
-                        const entryX = this.chart.timeScale().timeToCoordinate(rr.entryTime);
-                        const entryY = this.candleSeries.priceToCoordinate(rr.entryPrice);
+                            t1: this.rrTemp.entryTime,
+                            p1: this.rrTemp.entryPrice + direction * priceDiff * 3,
+                            t2: this.rrTemp.stopTime || this.rrTemp.entryTime,
+                            p2: this.rrTemp.entryPrice + direction * priceDiff * 2
+                        }, '#eab308', 0.15);
+                    } else {
+                        // 只显示入场点
+                        const entryX = this.chart.timeScale().timeToCoordinate(this.rrTemp.entryTime);
+                        const entryY = this.candleSeries.priceToCoordinate(this.rrTemp.entryPrice);
                         if (entryX != null && entryY != null) {
                             const entryLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
                             entryLine.setAttribute('x1', entryX - 10);
@@ -536,599 +591,433 @@
                             entryLine.setAttribute('y2', entryY);
                             entryLine.setAttribute('stroke', '#ffffff');
                             entryLine.setAttribute('stroke-width', '2');
+                            entryLine.setAttribute('stroke-dasharray', '3,3');
                             svg.appendChild(entryLine);
                         }
-                    });
-                },
-                /**
-                 * 渲染临时绘制的元素（增强盈亏比预览效果）
-                 */
-                renderTempElements(svg) {
-                    // 渲染临时趋势线
-                    if (this.overlayTempPoint && this.activeTool === 'trendline') {
-                        // 增加空值检查
-                        if (!this.overlayTempPoint.t || !this.overlayTempPoint.p) return;
-
-                        const time = this.chart.timeScale().coordinateToTime(this.currentMouseX);
-                        const price = this.candleSeries.coordinateToPrice(this.currentMouseY);
-                        if (!time || price == null) return;
-
-                        const x1 = this.chart.timeScale().timeToCoordinate(this.overlayTempPoint.t);
-                        const y1 = this.candleSeries.priceToCoordinate(this.overlayTempPoint.p);
-                        const x2 = this.chart.timeScale().timeToCoordinate(time);
-                        const y2 = this.candleSeries.priceToCoordinate(price);
-
-                        if (x1 != null && y1 != null && x2 != null && y2 != null) {
-                            const el = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                            el.setAttribute('x1', x1);
-                            el.setAttribute('y1', y1);
-                            el.setAttribute('x2', x2);
-                            el.setAttribute('y2', y2);
-                            el.setAttribute('stroke', '#2962ff');
-                            el.setAttribute('stroke-width', '2');
-                            el.setAttribute('stroke-dasharray', '5,5');
-                            svg.appendChild(el);
-                        }
                     }
+                }
+            },
+            /**
+             * 绘制普通矩形
+             */
+            drawRect(svg, rect, color, opacity) {
+                // 增加严格的空值检查，防止传入无效数据
+                if (!svg || !rect || rect.t1 == null || rect.t2 == null || rect.p1 == null || rect.p2 == null) {
+                    return;
+                }
 
-                    // 渲染临时矩形
-                    if (this.rectTemp && this.activeTool === 'rect') {
-                        this.drawRect(svg, this.rectTemp, '#f59e0b', 0.1);
-                    }
+                // 先检查时间值是否有效
+                let x1, x2, y1, y2;
+                try {
+                    x1 = this.chart.timeScale().timeToCoordinate(rect.t1);
+                    x2 = this.chart.timeScale().timeToCoordinate(rect.t2);
+                    y1 = this.candleSeries.priceToCoordinate(rect.p1);
+                    y2 = this.candleSeries.priceToCoordinate(rect.p2);
+                } catch (e) {
+                    // 捕获timeToCoordinate的异常，防止控制台报错
+                    console.debug('绘制矩形时坐标转换失败:', e);
+                    return;
+                }
 
-                    // 渲染临时盈亏比工具（完整预览效果）
-                    if (this.rrTemp && this.activeTool === 'rr') {
-                        // 增加空值检查
-                        if (!this.rrTemp || !this.rrTemp.entryTime || !this.rrTemp.entryPrice) return;
+                // 检查转换后的坐标是否有效
+                if (x1 == null || x2 == null || y1 == null || y2 == null) return;
 
-                        // 计算当前拖拽的止损价格
-                        const currentStopPrice = this.rrTemp.stopPrice || this.rrTemp.entryPrice;
+                // 计算矩形的实际坐标（确保x1 <= x2，y1 <= y2）
+                const rx = Math.min(x1, x2);
+                const ry = Math.min(y1, y2);
+                const width = Math.abs(x2 - x1);
+                const height = Math.abs(y2 - y1);
 
-                        // 只在有价格差时才显示目标预览
-                        if (Math.abs(this.rrTemp.entryPrice - currentStopPrice) > 0) {
-                            // 计算价格差值
-                            const priceDiff = Math.abs(this.rrTemp.entryPrice - currentStopPrice);
-                            const direction = currentStopPrice > this.rrTemp.entryPrice ? -1 : 1;
+                // 只绘制有实际大小的矩形
+                if (width <= 0 || height <= 0) return;
 
-                            // 预览止损区域（红色，透明度降低）
-                            this.drawRRRect(svg, {
-                                t1: this.rrTemp.entryTime,
-                                p1: this.rrTemp.entryPrice,
-                                t2: this.rrTemp.stopTime || this.rrTemp.entryTime,
-                                p2: currentStopPrice
-                            }, '#ef4444', 0.2);
+                // 创建矩形元素
+                const rectEl = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rectEl.setAttribute('x', rx);
+                rectEl.setAttribute('y', ry);
+                rectEl.setAttribute('width', width);
+                rectEl.setAttribute('height', height);
+                rectEl.setAttribute('fill', color);
+                rectEl.setAttribute('fill-opacity', opacity);
+                rectEl.setAttribute('stroke', color);
+                rectEl.setAttribute('stroke-width', '1');
+                rectEl.setAttribute('stroke-opacity', '0.8');
 
-                            // 预览1倍目标区域（蓝色，透明度降低）
-                            this.drawRRRect(svg, {
-                                t1: this.rrTemp.entryTime,
-                                p1: this.rrTemp.entryPrice + direction * priceDiff * 1,
-                                t2: this.rrTemp.stopTime || this.rrTemp.entryTime,
-                                p2: this.rrTemp.entryPrice
-                            }, '#3b82f6', 0.15);
+                svg.appendChild(rectEl);
+            },
+            /**
+             * 绘制盈亏比矩形（自定义样式：去掉左右边框，上下边框虚线）
+             */
+            drawRRRect(svg, rect, color, opacity) {
+                // 增加严格的空值检查，防止传入无效数据
+                if (!svg || !rect || rect.t1 == null || rect.t2 == null || rect.p1 == null || rect.p2 == null) {
+                    return;
+                }
 
-                            // 预览2倍目标区域（绿色，透明度降低）
-                            this.drawRRRect(svg, {
-                                t1: this.rrTemp.entryTime,
-                                p1: this.rrTemp.entryPrice + direction * priceDiff * 2,
-                                t2: this.rrTemp.stopTime || this.rrTemp.entryTime,
-                                p2: this.rrTemp.entryPrice + direction * priceDiff * 1
-                            }, '#22c55e', 0.15);
+                // 先检查时间值是否有效
+                let x1, x2, y1, y2;
+                try {
+                    x1 = this.chart.timeScale().timeToCoordinate(rect.t1);
+                    x2 = this.chart.timeScale().timeToCoordinate(rect.t2);
+                    y1 = this.candleSeries.priceToCoordinate(rect.p1);
+                    y2 = this.candleSeries.priceToCoordinate(rect.p2);
+                } catch (e) {
+                    // 捕获timeToCoordinate的异常，防止控制台报错
+                    console.debug('绘制盈亏比矩形时坐标转换失败:', e);
+                    return;
+                }
 
-                            // 预览3倍目标区域（黄色，透明度降低）
-                            this.drawRRRect(svg, {
-                                t1: this.rrTemp.entryTime,
-                                p1: this.rrTemp.entryPrice + direction * priceDiff * 3,
-                                t2: this.rrTemp.stopTime || this.rrTemp.entryTime,
-                                p2: this.rrTemp.entryPrice + direction * priceDiff * 2
-                            }, '#eab308', 0.15);
-                        } else {
-                            // 只显示入场点
-                            const entryX = this.chart.timeScale().timeToCoordinate(this.rrTemp.entryTime);
-                            const entryY = this.candleSeries.priceToCoordinate(this.rrTemp.entryPrice);
-                            if (entryX != null && entryY != null) {
-                                const entryLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                                entryLine.setAttribute('x1', entryX - 10);
-                                entryLine.setAttribute('y1', entryY);
-                                entryLine.setAttribute('x2', entryX + 10);
-                                entryLine.setAttribute('y2', entryY);
-                                entryLine.setAttribute('stroke', '#ffffff');
-                                entryLine.setAttribute('stroke-width', '2');
-                                entryLine.setAttribute('stroke-dasharray', '3,3');
-                                svg.appendChild(entryLine);
-                            }
-                        }
-                    }
-                },
-                /**
-                 * 绘制普通矩形
-                 */
-                drawRect(svg, rect, color, opacity) {
-                    // 增加严格的空值检查，防止传入无效数据
-                    if (!svg || !rect || rect.t1 == null || rect.t2 == null || rect.p1 == null || rect.p2 == null) {
-                        return;
-                    }
+                // 检查转换后的坐标是否有效
+                if (x1 == null || x2 == null || y1 == null || y2 == null) return;
 
-                    // 先检查时间值是否有效
-                    let x1, x2, y1, y2;
-                    try {
-                        x1 = this.chart.timeScale().timeToCoordinate(rect.t1);
-                        x2 = this.chart.timeScale().timeToCoordinate(rect.t2);
-                        y1 = this.candleSeries.priceToCoordinate(rect.p1);
-                        y2 = this.candleSeries.priceToCoordinate(rect.p2);
-                    } catch (e) {
-                        // 捕获timeToCoordinate的异常，防止控制台报错
-                        console.debug('绘制矩形时坐标转换失败:', e);
-                        return;
-                    }
+                // 计算矩形的实际坐标
+                const rx = Math.min(x1, x2);
+                const ry = Math.min(y1, y2);
+                const width = Math.abs(x2 - x1);
+                const height = Math.abs(y2 - y1);
 
-                    // 检查转换后的坐标是否有效
-                    if (x1 == null || x2 == null || y1 == null || y2 == null) return;
+                // 只绘制有实际大小的矩形
+                if (width <= 0 || height <= 0) return;
 
-                    // 计算矩形的实际坐标（确保x1 <= x2，y1 <= y2）
-                    const rx = Math.min(x1, x2);
-                    const ry = Math.min(y1, y2);
-                    const width = Math.abs(x2 - x1);
-                    const height = Math.abs(y2 - y1);
+                // 1. 创建填充矩形（无描边）
+                const fillRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                fillRect.setAttribute('x', rx);
+                fillRect.setAttribute('y', ry);
+                fillRect.setAttribute('width', width);
+                fillRect.setAttribute('height', height);
+                fillRect.setAttribute('fill', color);
+                fillRect.setAttribute('fill-opacity', opacity);
+                fillRect.setAttribute('stroke', 'none'); // 去掉所有边框
+                svg.appendChild(fillRect);
 
-                    // 只绘制有实际大小的矩形
-                    if (width <= 0 || height <= 0) return;
+                // 2. 绘制上边框（虚线）
+                const topLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                topLine.setAttribute('x1', rx);
+                topLine.setAttribute('y1', ry);
+                topLine.setAttribute('x2', rx + width);
+                topLine.setAttribute('y2', ry);
+                topLine.setAttribute('stroke', color);
+                topLine.setAttribute('stroke-width', '1');
+                topLine.setAttribute('stroke-opacity', '0.8');
+                topLine.setAttribute('stroke-dasharray', '4,2'); // 虚线样式
+                svg.appendChild(topLine);
 
-                    // 创建矩形元素
-                    const rectEl = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                    rectEl.setAttribute('x', rx);
-                    rectEl.setAttribute('y', ry);
-                    rectEl.setAttribute('width', width);
-                    rectEl.setAttribute('height', height);
-                    rectEl.setAttribute('fill', color);
-                    rectEl.setAttribute('fill-opacity', opacity);
-                    rectEl.setAttribute('stroke', color);
-                    rectEl.setAttribute('stroke-width', '1');
-                    rectEl.setAttribute('stroke-opacity', '0.8');
+                // 3. 绘制下边框（虚线）
+                const bottomLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                bottomLine.setAttribute('x1', rx);
+                bottomLine.setAttribute('y1', ry + height);
+                bottomLine.setAttribute('x2', rx + width);
+                bottomLine.setAttribute('y2', ry + height);
+                bottomLine.setAttribute('stroke', color);
+                bottomLine.setAttribute('stroke-width', '1');
+                bottomLine.setAttribute('stroke-opacity', '0.8');
+                bottomLine.setAttribute('stroke-dasharray', '4,2'); // 虚线样式
+                svg.appendChild(bottomLine);
 
-                    svg.appendChild(rectEl);
-                },
-                /**
-                 * 绘制盈亏比矩形（自定义样式：去掉左右边框，上下边框虚线）
-                 */
-                drawRRRect(svg, rect, color, opacity) {
-                    // 增加严格的空值检查，防止传入无效数据
-                    if (!svg || !rect || rect.t1 == null || rect.t2 == null || rect.p1 == null || rect.p2 == null) {
-                        return;
-                    }
+                // 注意：不绘制左右边框，实现去掉左右边框的效果
+            },
+            /**
+             * Overlay指针按下事件
+             */
+            onOverlayPointerDown(e) {
+                this.currentMouseX = e.offsetX;
+                this.currentMouseY = e.offsetY;
 
-                    // 先检查时间值是否有效
-                    let x1, x2, y1, y2;
-                    try {
-                        x1 = this.chart.timeScale().timeToCoordinate(rect.t1);
-                        x2 = this.chart.timeScale().timeToCoordinate(rect.t2);
-                        y1 = this.candleSeries.priceToCoordinate(rect.p1);
-                        y2 = this.candleSeries.priceToCoordinate(rect.p2);
-                    } catch (e) {
-                        // 捕获timeToCoordinate的异常，防止控制台报错
-                        console.debug('绘制盈亏比矩形时坐标转换失败:', e);
-                        return;
-                    }
+                if (this.activeTool === 'trendline') {
+                    this.handleTrendlineDown(e);
+                } else if (this.activeTool === 'rect') {
+                    this.handleRectDown(e);
+                } else if (this.activeTool === 'rr') {
+                    this.handleRRDown(e);
+                }
+            },
+            /**
+             * Overlay指针移动事件
+             */
+            onOverlayPointerMove(e) {
+                // 记录当前鼠标位置
+                this.currentMouseX = e.offsetX;
+                this.currentMouseY = e.offsetY;
 
-                    // 检查转换后的坐标是否有效
-                    if (x1 == null || x2 == null || y1 == null || y2 == null) return;
-
-                    // 计算矩形的实际坐标
-                    const rx = Math.min(x1, x2);
-                    const ry = Math.min(y1, y2);
-                    const width = Math.abs(x2 - x1);
-                    const height = Math.abs(y2 - y1);
-
-                    // 只绘制有实际大小的矩形
-                    if (width <= 0 || height <= 0) return;
-
-                    // 1. 创建填充矩形（无描边）
-                    const fillRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                    fillRect.setAttribute('x', rx);
-                    fillRect.setAttribute('y', ry);
-                    fillRect.setAttribute('width', width);
-                    fillRect.setAttribute('height', height);
-                    fillRect.setAttribute('fill', color);
-                    fillRect.setAttribute('fill-opacity', opacity);
-                    fillRect.setAttribute('stroke', 'none'); // 去掉所有边框
-                    svg.appendChild(fillRect);
-
-                    // 2. 绘制上边框（虚线）
-                    const topLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                    topLine.setAttribute('x1', rx);
-                    topLine.setAttribute('y1', ry);
-                    topLine.setAttribute('x2', rx + width);
-                    topLine.setAttribute('y2', ry);
-                    topLine.setAttribute('stroke', color);
-                    topLine.setAttribute('stroke-width', '1');
-                    topLine.setAttribute('stroke-opacity', '0.8');
-                    topLine.setAttribute('stroke-dasharray', '4,2'); // 虚线样式
-                    svg.appendChild(topLine);
-
-                    // 3. 绘制下边框（虚线）
-                    const bottomLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                    bottomLine.setAttribute('x1', rx);
-                    bottomLine.setAttribute('y1', ry + height);
-                    bottomLine.setAttribute('x2', rx + width);
-                    bottomLine.setAttribute('y2', ry + height);
-                    bottomLine.setAttribute('stroke', color);
-                    bottomLine.setAttribute('stroke-width', '1');
-                    bottomLine.setAttribute('stroke-opacity', '0.8');
-                    bottomLine.setAttribute('stroke-dasharray', '4,2'); // 虚线样式
-                    svg.appendChild(bottomLine);
-
-                    // 注意：不绘制左右边框，实现去掉左右边框的效果
-                },
-                /**
-                 * Overlay指针按下事件
-                 */
-                onOverlayPointerDown(e) {
-                    this.currentMouseX = e.offsetX;
-                    this.currentMouseY = e.offsetY;
-
-                    if (this.activeTool === 'trendline') {
-                        this.handleTrendlineDown(e);
-                    } else if (this.activeTool === 'rect') {
-                        this.handleRectDown(e);
-                    } else if (this.activeTool === 'rr') {
-                        this.handleRRDown(e);
-                    }
-                },
-                /**
-                 * Overlay指针移动事件
-                 */
-                onOverlayPointerMove(e) {
-                    // 记录当前鼠标位置
-                    this.currentMouseX = e.offsetX;
-                    this.currentMouseY = e.offsetY;
-
-                    if (this.activeTool === 'trendline' && this.overlayTempPoint) {
-                        this.renderOverlay();
-                    } else if (this.activeTool === 'rect' && this.rectTemp) {
-                        const t = this.chart.timeScale().coordinateToTime(e.offsetX);
-                        const p = this.candleSeries.coordinateToPrice(e.offsetY);
-                        if (!t || p == null) return;
-                        this.rectTemp.t2 = t;
-                        this.rectTemp.p2 = p;
-                        this.renderOverlay();
-                    } else if (this.activeTool === 'rr' && this.rrTemp) {
-                        // 增加空值检查
-                        if (!this.rrTemp) return;
-
-                        const t = this.chart.timeScale().coordinateToTime(e.offsetX);
-                        const p = this.candleSeries.coordinateToPrice(e.offsetY);
-                        if (!t || p == null) return;
-                        this.rrTemp.stopTime = t;
-                        this.rrTemp.stopPrice = p;
-                        this.renderOverlay();
-                    }
-                },
-                /**
-                 * Overlay指针抬起事件
-                 */
-                onOverlayPointerUp(e) {
-                    if (this.activeTool === 'rect' && this.rectTemp) {
-                        // 确保矩形有实际大小
-                        if (this.rectTemp.t1 !== this.rectTemp.t2 && this.rectTemp.p1 !== this.rectTemp.p2) {
-                            this.rects.push({ ...this.rectTemp });
-                        }
-                        this.rectTemp = null;
-                        this.renderOverlay();
-                    } else if (this.activeTool === 'rr' && this.rrTemp) {
-                        // 增加空值检查
-                        if (!this.rrTemp || !this.rrTemp.entryTime || !this.rrTemp.entryPrice) {
-                            this.rrTemp = null;
-                            return;
-                        }
-
-                        // 确保盈亏比矩形有实际大小
-                        if (this.rrTemp.entryTime !== this.rrTemp.stopTime &&
-                            Math.abs(this.rrTemp.entryPrice - this.rrTemp.stopPrice) > 0) {
-                            this.rrTools.push({ ...this.rrTemp });
-                            this.showOperateMsg('盈亏比工具绘制完成，已自动生成1/2/3倍目标位', true);
-                        }
-                        this.rrTemp = null;
-                        this.renderOverlay();
-                    }
-                },
-                /**
-                 * 处理趋势线按下事件
-                 */
-                handleTrendlineDown(e) {
-                    const time = this.chart.timeScale().coordinateToTime(e.offsetX);
-                    const price = this.candleSeries.coordinateToPrice(e.offsetY);
-                    if (!time || price == null) return;
-
-                    if (!this.overlayTempPoint) {
-                        // 第一个点
-                        this.overlayTempPoint = { t: time, p: price };
-                    } else {
-                        // 第二个点，完成趋势线绘制
-                        this.trendLines.push({
-                            t1: this.overlayTempPoint.t,
-                            p1: this.overlayTempPoint.p,
-                            t2: time,
-                            p2: price
-                        });
-                        this.overlayTempPoint = null;
-                        this.renderOverlay();
-                    }
-                },
-                /**
-                 * 处理矩形按下事件
-                 */
-                handleRectDown(e) {
+                if (this.activeTool === 'trendline' && this.overlayTempPoint) {
+                    this.renderOverlay();
+                } else if (this.activeTool === 'rect' && this.rectTemp) {
                     const t = this.chart.timeScale().coordinateToTime(e.offsetX);
                     const p = this.candleSeries.coordinateToPrice(e.offsetY);
                     if (!t || p == null) return;
-                    this.rectTemp = { t1: t, p1: p, t2: t, p2: p };
-                },
-                /**
-                 * 处理盈亏比按下事件
-                 */
-                handleRRDown(e) {
+                    this.rectTemp.t2 = t;
+                    this.rectTemp.p2 = p;
+                    this.renderOverlay();
+                } else if (this.activeTool === 'rr' && this.rrTemp) {
+                    // 增加空值检查
+                    if (!this.rrTemp) return;
+
                     const t = this.chart.timeScale().coordinateToTime(e.offsetX);
                     const p = this.candleSeries.coordinateToPrice(e.offsetY);
                     if (!t || p == null) return;
-
-                    // 初始化盈亏比临时数据（入场点）
-                    this.rrTemp = {
-                        entryTime: t,
-                        entryPrice: p,
-                        stopTime: t,
-                        stopPrice: p
-                    };
-                    this.showOperateMsg('已设置入场点，请拖拽至止损位', true);
-                },
-                /**
-                 * 初始化十字光标监听（悬浮提示）
-                 */
-                initCrosshairListener() {
-                    if (!this.chart || !this.candleSeries) return;
-
-                    this.chart.subscribeCrosshairMove((param) => {
-                        const point = param.point;
-                        if (!point || !param.time) {
-                            this.currentKline = null;
-                            this.tooltipPos.opacity = 0;
-                            return;
-                        }
-
-                        // 匹配当前K线数据
-                        const currentKline = this.currentKlineData.find(k => Math.floor(k[0] / 1000 + 8 * 60 * 60) === param.time);
-                        if (!currentKline) {
-                            this.currentKline = null;
-                            this.tooltipPos.opacity = 0;
-                            return;
-                        }
-                        this.currentKline = currentKline;
-
-                        // 计算提示框位置（边界处理）
-                        const chartRect = this.$refs.chartEl.getBoundingClientRect();
-                        const tooltipEl = this.$refs.tooltipEl;
-                        const tooltipWidth = tooltipEl.offsetWidth || 180;
-                        const tooltipHeight = tooltipEl.offsetHeight || 100;
-
-                        let left = point.x + 10;
-                        let top = point.y + 5;
-
-                        const maxLeft = chartRect.width - tooltipWidth - 10;
-                        const maxTop = chartRect.height - tooltipHeight - 10;
-                        left = Math.min(left, maxLeft);
-                        left = Math.max(left, 10);
-                        top = Math.min(top, maxTop);
-                        top = Math.max(top, 10);
-
-                        // 更新提示框位置
-                        this.tooltipPos = {
-                            top: top,
-                            left: left,
-                            opacity: 1
-                        };
-                    });
-                },
-
-                /**
-                 * 校验步数输入（限制1-288）
-                 */
-                validateStep() {
-                    if (this.targetStep < 1) {
-                        this.targetStep = 1;
-                    } else if (this.targetStep > 288) {
-                        this.targetStep = 288;
+                    this.rrTemp.stopTime = t;
+                    this.rrTemp.stopPrice = p;
+                    this.renderOverlay();
+                }
+            },
+            /**
+             * Overlay指针抬起事件
+             */
+            onOverlayPointerUp(e) {
+                if (this.activeTool === 'rect' && this.rectTemp) {
+                    // 确保矩形有实际大小
+                    if (this.rectTemp.t1 !== this.rectTemp.t2 && this.rectTemp.p1 !== this.rectTemp.p2) {
+                        this.rects.push({...this.rectTemp});
                     }
-                },
-
-                /**
-                 * 加载指定日期和步数的K线数据
-                 */
-                async loadKlineByStep() {
-                    this.isLoading = true;
-                    this.operateMsg = '';
-                    try {
-                        // 调用后台接口
-                        const response = await fetch(`${this.apiBaseUrl}/get-kline`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                date: this.targetDate,
-                                n: this.targetStep
-                            }),
-                            credentials: 'include',
-                            cache: 'no-cache',
-                        });
-
-                        if (!response.ok) {
-                            const errorText = await response.text();
-                            throw new Error(errorText || `请求失败：${response.status}`);
-                        }
-
-                        const result = await response.json();
-                        this.currentKlineData = result.data.kline_data || [];
-                        this.currentStep = this.targetStep;
-                        this.maxStep = Math.max(this.currentKlineData.length, 288);
-
-                        // 转换数据格式并渲染图表
-                        const chartData = this.currentKlineData.map(item => ({
-                            time: Math.floor((item[0] / 1000) + 8 * 60 * 60), // 转换为秒级时间戳
-                            open: parseFloat(item[1]),
-                            high: parseFloat(item[2]),
-                            low: parseFloat(item[3]),
-                            close: parseFloat(item[4])
-                        }));
-                        this.candleSeries.setData(chartData);
-                        const ema20Data = this.calculateEMA(chartData, 20);
-                        this.ema20Series.setData(ema20Data);
-                        this.chart.timeScale().fitContent();
-
-                        this.showOperateMsg(`成功加载${this.targetStep}根K线`, true);
-                    } catch (error) {
-                        console.error('加载K线失败：', error);
-                        this.showOperateMsg(`加载失败：${error.message}`, false);
-                    } finally {
-                        this.isLoading = false;
-                    }
-                },
-
-                /**
-                 * 重置回放
-                 */
-                resetPlayback() {
-                    this.currentStep = 0;
-                    this.targetStep = 1;
-                    this.currentKlineData = [];
-                    this.operateMsg = '';
-                    this.candleSeries.setData([]);
-                    this.ema20Series.setData([]);
-                    this.currentKline = null;
-                    this.tooltipPos.opacity = 0;
-                    // 清空所有绘图元素
-                    this.trendLines = [];
-                    this.rects = [];
-                    this.rrTools = [];
-                    this.overlayTempPoint = null;
                     this.rectTemp = null;
+                    this.renderOverlay();
+                } else if (this.activeTool === 'rr' && this.rrTemp) {
+                    // 增加空值检查
+                    if (!this.rrTemp || !this.rrTemp.entryTime || !this.rrTemp.entryPrice) {
+                        this.rrTemp = null;
+                        return;
+                    }
+
+                    // 确保盈亏比矩形有实际大小
+                    if (this.rrTemp.entryTime !== this.rrTemp.stopTime &&
+                        Math.abs(this.rrTemp.entryPrice - this.rrTemp.stopPrice) > 0) {
+                        this.rrTools.push({...this.rrTemp});
+                        this.showOperateMsg('盈亏比工具绘制完成，已自动生成1/2/3倍目标位', true);
+                    }
                     this.rrTemp = null;
                     this.renderOverlay();
-                },
+                }
+            },
+            /**
+             * 处理趋势线按下事件
+             */
+            handleTrendlineDown(e) {
+                const time = this.chart.timeScale().coordinateToTime(e.offsetX);
+                const price = this.candleSeries.coordinateToPrice(e.offsetY);
+                if (!time || price == null) return;
 
-                /**
-                 * 上一步
-                 */
-                async prevStep() {
-                    const targetStep = this.currentStep - 1;
-                    await this.loadSpecifiedStep(targetStep);
-                },
+                if (!this.overlayTempPoint) {
+                    // 第一个点
+                    this.overlayTempPoint = {t: time, p: price};
+                } else {
+                    // 第二个点，完成趋势线绘制
+                    this.trendLines.push({
+                        t1: this.overlayTempPoint.t,
+                        p1: this.overlayTempPoint.p,
+                        t2: time,
+                        p2: price
+                    });
+                    this.overlayTempPoint = null;
+                    this.renderOverlay();
+                }
+            },
+            /**
+             * 处理矩形按下事件
+             */
+            handleRectDown(e) {
+                const t = this.chart.timeScale().coordinateToTime(e.offsetX);
+                const p = this.candleSeries.coordinateToPrice(e.offsetY);
+                if (!t || p == null) return;
+                this.rectTemp = {t1: t, p1: p, t2: t, p2: p};
+            },
+            /**
+             * 处理盈亏比按下事件
+             */
+            handleRRDown(e) {
+                const t = this.chart.timeScale().coordinateToTime(e.offsetX);
+                const p = this.candleSeries.coordinateToPrice(e.offsetY);
+                if (!t || p == null) return;
 
-                /**
-                 * 下一步
-                 */
-                async nextStep() {
-                    const targetStep = this.currentStep + 1;
-                    await this.loadSpecifiedStep(targetStep);
-                },
+                // 初始化盈亏比临时数据（入场点）
+                this.rrTemp = {
+                    entryTime: t,
+                    entryPrice: p,
+                    stopTime: t,
+                    stopPrice: p
+                };
+                this.showOperateMsg('已设置入场点，请拖拽至止损位', true);
+            },
+            /**
+             * 初始化十字光标监听（悬浮提示）
+             */
+            initCrosshairListener() {
+                if (!this.chart || !this.candleSeries) return;
 
-                /**
-                 * 加载指定步数的K线
-                 */
-                async loadSpecifiedStep(targetStep) {
-                    if (!this.targetDate || targetStep < 1 || targetStep > 288) {
-                        this.showOperateMsg('参数错误', false);
+                this.chart.subscribeCrosshairMove((param) => {
+                    const point = param.point;
+                    if (!point || !param.time) {
+                        this.currentKline = null;
+                        this.tooltipPos.opacity = 0;
                         return;
                     }
-
-                    this.isLoading = true;
-                    this.operateMsg = '';
-                    try {
-                        const response = await fetch(`${this.apiBaseUrl}/get-kline`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                date: this.targetDate,
-                                n: targetStep
-                            }),
-                            credentials: 'include',
-                            cache: 'no-cache',
-                        });
-
-                        if (!response.ok) {
-                            const errorText = await response.text();
-                            throw new Error(errorText || `请求失败：${response.status}`);
-                        }
-
-                        const result = await response.json();
-                        this.currentKlineData = result.data.kline_data || [];
-                        this.currentStep = targetStep;
-                        this.targetStep = targetStep;
-                        this.maxStep = Math.max(this.currentKlineData.length, 288);
-
-                        // 转换数据格式并渲染图表
-                        const chartData = this.currentKlineData.map(item => ({
-                            time: Math.floor(item[0] / 1000 + 8 * 60 * 60),
-                            open: parseFloat(item[1]),
-                            high: parseFloat(item[2]),
-                            low: parseFloat(item[3]),
-                            close: parseFloat(item[4])
-                        }));
-                        this.candleSeries.setData(chartData);
-                        const ema20Data = this.calculateEMA(chartData, 20);
-                        this.ema20Series.setData(ema20Data);
-                        this.chart.timeScale().fitContent();
-
-                        this.showOperateMsg(`当前步数：${targetStep}`, true);
-                    } catch (error) {
-                        console.error('切换步数失败：', error);
-                        this.showOperateMsg(`切换失败：${error.message}`, false);
-                    } finally {
-                        this.isLoading = false;
+                    // 匹配当前K线数据
+                    const currentKline = this.currentKlineData.find(k => k["openTime"] === param.time * 1000);
+                    if (!currentKline) {
+                        this.currentKline = null;
+                        this.tooltipPos.opacity = 0;
+                        return;
                     }
-                },
+                    this.currentKline = currentKline;
 
-                /**
-                 * 显示操作提示信息
-                 */
-                showOperateMsg(msg, isSuccess) {
-                    this.operateMsg = msg;
-                    this.operateSuccess = isSuccess;
-                    // 5秒后自动清除提示
-                    setTimeout(() => {
-                        this.operateMsg = '';
-                    }, 5000);
-                },
+                    // 计算提示框位置（边界处理）
+                    const chartRect = this.$refs.chartEl.getBoundingClientRect();
+                    const tooltipEl = this.$refs.tooltipEl;
+                    const tooltipWidth = tooltipEl.offsetWidth || 180;
+                    const tooltipHeight = tooltipEl.offsetHeight || 100;
 
-                /**
-                 * 格式化时间戳
-                 */
-                formatTimestamp(timestamp) {
-                    if (!timestamp) return '';
-                    // 兼容毫秒/秒级时间戳
-                    const date = new Date(timestamp.toString().length > 10 ? timestamp : timestamp * 1000);
-                    return new Intl.DateTimeFormat('zh-CN', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit'
-                    }).format(date);
-                },
+                    let left = point.x + 10;
+                    let top = point.y + 5;
 
-                /**
-                 * 处理窗口大小变化
-                 */
-                handleWindowResize() {
-                    if (!this.chart || !this.$refs.chartEl) return;
-                    this.chart.applyOptions({ height: this.$refs.chartEl.clientHeight });
-                    if (this.currentKlineData.length > 0) this.chart.timeScale().fitContent();
+                    const maxLeft = chartRect.width - tooltipWidth - 10;
+                    const maxTop = chartRect.height - tooltipHeight - 10;
+                    left = Math.min(left, maxLeft);
+                    left = Math.max(left, 10);
+                    top = Math.min(top, maxTop);
+                    top = Math.max(top, 10);
+
+                    // 更新提示框位置
+                    this.tooltipPos = {
+                        top: top,
+                        left: left,
+                        opacity: 1
+                    };
+                });
+            },
+
+            /**
+             * 加载指定日期范围的K线数据
+             */
+            async loadKlineByDateRange(targetTime, direction, step) {
+                this.isLoading = true;
+                this.operateMsg = '';
+                try {
+                    // 移动开始时间
+                    if (targetTime === -1) {
+                        this.startTime = new Date(new Date(Date.parse(this.startTime) + direction * step * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
+                    }
+                    // 移动结束时间
+                    else if (targetTime === 1) {
+                        this.endTime = new Date(new Date(Date.parse(this.endTime) + direction * step * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
+                    }
+
+                    // 调用后台接口
+                    const response = await fetch(`${this.apiBaseUrl}/c/binance/kline_range?s=BTCUSDT&i=5m&start=${this.startTime}&end=${this.endTime}`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(errorText || `请求失败：${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    this.currentKlineData = result.data || [];
+                    this.currentStep = this.targetStep;
+
+                    // 转换数据格式并渲染图表
+                    const chartData = this.currentKlineData.map(item => ({
+                        time: Math.floor(item["openTime"] / 1000), // 转换为秒级时间戳
+                        open: parseFloat(item["openPrice"]),
+                        high: parseFloat(item["highPrice"]),
+                        low: parseFloat(item["lowPrice"]),
+                        close: parseFloat(item["closePrice"])
+                    }));
+                    this.candleSeries.setData(chartData);
+                    const ema20Data = this.calculateEMA(chartData, 20);
+                    this.ema20Series.setData(ema20Data);
+                    this.chart.timeScale().fitContent();
+
+                    this.showOperateMsg(`成功加载${this.targetStep}根K线`, true);
+                } catch (error) {
+                    console.error('加载K线失败：', error);
+                    this.showOperateMsg(`加载失败：${error.message}`, false);
+                } finally {
+                    this.isLoading = false;
                 }
+            },
+
+            /**
+             * 重置回放
+             */
+            resetPlayback() {
+                this.currentStep = 0;
+                this.targetStep = 1;
+                this.currentKlineData = [];
+                this.operateMsg = '';
+                this.candleSeries.setData([]);
+                this.ema20Series.setData([]);
+                this.currentKline = null;
+                this.tooltipPos.opacity = 0;
+                // 清空所有绘图元素
+                this.trendLines = [];
+                this.rects = [];
+                this.rrTools = [];
+                this.overlayTempPoint = null;
+                this.rectTemp = null;
+                this.rrTemp = null;
+                this.renderOverlay();
+            },
+
+            /**
+             * 上一步
+             */
+            async prevStep() {
+                const targetStep = this.currentStep - 1;
+                await this.loadSpecifiedStep(targetStep);
+            },
+
+            /**
+             * 下一步
+             */
+            async nextStep() {
+                const targetStep = this.currentStep + 1;
+                await this.loadSpecifiedStep(targetStep);
+            },
+
+            /**
+             * 显示操作提示信息
+             */
+            showOperateMsg(msg, isSuccess) {
+                this.operateMsg = msg;
+                this.operateSuccess = isSuccess;
+                // 5秒后自动清除提示
+                setTimeout(() => {
+                    this.operateMsg = '';
+                }, 5000);
+            },
+
+            /**
+             * 格式化时间戳
+             */
+            formatTimestamp(timestamp) {
+                if (!timestamp) return '';
+                // 兼容毫秒/秒级时间戳
+                const date = new Date(timestamp.toString().length > 10 ? timestamp - 8 * 60 * 60 * 1000 : (timestamp * 1000) - 8 * 60 * 60 * 1000);
+                return new Intl.DateTimeFormat('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                }).format(date);
+            },
+
+            /**
+             * 处理窗口大小变化
+             */
+            handleWindowResize() {
+                if (!this.chart || !this.$refs.chartEl) return;
+                this.chart.applyOptions({height: this.$refs.chartEl.clientHeight});
+                if (this.currentKlineData.length > 0) this.chart.timeScale().fitContent();
             }
-        }).mount('#app');
-    </script>
+        }
+    }).mount('#app');
+</script>
 </body>
 
 </html>
