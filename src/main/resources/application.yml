@@ -4,8 +4,8 @@ server:
 spring:
   datasource:
     driver-class-name: org.sqlite.JDBC
-    # 数据库文件路径：项目运行后会在 resources 下生成 db/btc_kline.db
-    url: jdbc:sqlite:classpath:db/btc_kline.db
+    # 数据库文件路径：项目运行后会在 resources 下生成 db/binance.db
+    url: jdbc:sqlite:binance.db
     username:
     password:
   # 启动时初始化表结构
@@ -16,7 +16,6 @@ spring:
 
 # MyBatis 配置
 mybatis:
-  mapper-locations: classpath:mapper/*.xml
   type-aliases-package: com.example.binance.entity
   configuration:
     map-underscore-to-camel-case: true  # 下划线转驼峰
