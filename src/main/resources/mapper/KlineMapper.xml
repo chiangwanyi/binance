@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.btckline.mapper.KlineMapper">
+
+    <!-- 通用结果集映射 -->
+    <resultMap id="KlineResultMap" type="KlineEntity">
+        <id column="open_time" property="openTime"/>
+        <result column="open_price" property="openPrice"/>
+        <result column="high_price" property="highPrice"/>
+        <result column="low_price" property="lowPrice"/>
+        <result column="close_price" property="closePrice"/>
+        <result column="volume" property="volume"/>
+        <result column="close_time" property="closeTime"/>
+        <result column="quote_volume" property="quoteVolume"/>
+        <result column="trade_count" property="tradeCount"/>
+        <result column="taker_buy_volume" property="takerBuyVolume"/>
+        <result column="taker_buy_quote_volume" property="takerBuyQuoteVolume"/>
+    </resultMap>
+
+    <!-- 新增单条K线 -->
+    <insert id="insertKline" parameterType="KlineEntity">
+        INSERT OR REPLACE INTO btcusdt_perpetual_5m_kline (
+        open_time, open_price, high_price, low_price, close_price,
+        volume, close_time, quote_volume, trade_count,
+        taker_buy_volume, taker_buy_quote_volume
+        ) VALUES (
+        #{openTime}, #{openPrice}, #{highPrice}, #{lowPrice}, #{closePrice},
+        #{volume}, #{closeTime}, #{quoteVolume}, #{tradeCount},
+        #{takerBuyVolume}, #{takerBuyQuoteVolume}
+        )
+    </insert>
+
+    <!-- 批量新增K线 -->
+    <insert id="batchInsertKline">
+        INSERT OR REPLACE INTO btcusdt_perpetual_5m_kline (
+        open_time, open_price, high_price, low_price, close_price,
+        volume, close_time, quote_volume, trade_count,
+        taker_buy_volume, taker_buy_quote_volume
+        ) VALUES
+        <foreach collection="klineList" item="item" separator=",">
+            (
+            #{item.openTime}, #{item.openPrice}, #{item.highPrice}, #{item.lowPrice}, #{item.closePrice},
+            #{item.volume}, #{item.closeTime}, #{item.quoteVolume}, #{item.tradeCount},
+            #{item.takerBuyVolume}, #{item.takerBuyQuoteVolume}
+            )
+        </foreach>
+    </insert>
+
+    <!-- 按时间范围查询K线 -->
+    <select id="selectByTimeRange" resultMap="KlineResultMap">
+        SELECT * FROM btcusdt_perpetual_5m_kline
+        WHERE open_time BETWEEN #{startTime} AND #{endTime}
+        ORDER BY open_time ASC
+    </select>
+
+    <!-- 更新K线数据 -->
+    <update id="updateKline" parameterType="KlineEntity">
+        UPDATE btcusdt_perpetual_5m_kline
+        SET
+        open_price = #{openPrice},
+        high_price = #{highPrice},
+        low_price = #{lowPrice},
+        close_price = #{closePrice},
+        volume = #{volume},
+        close_time = #{closeTime},
+        quote_volume = #{quoteVolume},
+        trade_count = #{tradeCount},
+        taker_buy_volume = #{takerBuyVolume},
+        taker_buy_quote_volume = #{takerBuyQuoteVolume}
+        WHERE open_time = #{openTime}
+    </update>
+
+</mapper>
