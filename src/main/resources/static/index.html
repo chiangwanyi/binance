@@ -140,13 +140,13 @@
 
         <div class="card">
             <h3>绘图工具</h3>
-            <div>
+            <div style="display: flex;flex-direction: row;gap: 4px;">
                 <button :class="{active: activeTool==='cursor'}" @click="setTool('cursor')">查看K线</button>
                 <button :class="{active: activeTool==='trendline'}" @click="setTool('trendline')">趋势线</button>
                 <button :class="{active: activeTool==='rect'}" @click="setTool('rect')">矩形</button>
                 <button :class="{active: activeTool==='rr'}" @click="setTool('rr')">盈亏比</button>
-                <button @click="clearAllOverlays">清除所有绘图</button>
             </div>
+            <button @click="clearAllOverlays">清除所有绘图</button>
         </div>
 
         <div class="card">
@@ -217,7 +217,7 @@
 
                 // 日期
                 startTime: '2025-01-01T00:00',
-                endTime: '2025-01-01T00:10',
+                endTime: '2025-01-01T12:00',
 
                 // 业务数据
                 step: 5,
@@ -253,9 +253,6 @@
         mounted() {
             // 初始化图表
             this.initChart();
-            // 默认填充当天日期
-            const today = new Date();
-            this.targetDate = today.toISOString().split('T')[0];
             // 初始化十字光标监听
             this.initCrosshairListener();
             // 窗口大小监听
