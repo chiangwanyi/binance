@@ -2,6 +2,7 @@ package com.example.binance;
 
 import com.example.binance.entity.KlineEntity;
 import com.example.binance.mapper.KlineMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -11,6 +12,7 @@ import java.util.List;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@Slf4j
 class KlineMapperTest {
 
     @Autowired
@@ -19,6 +21,6 @@ class KlineMapperTest {
     @Test
     void selectAll_shouldWork() {
         List<KlineEntity> list = klineMapper.selectAll();
-        System.out.println(list);
+        log.info("list: {}", list);
     }
 }
