@@ -1,6 +1,6 @@
-package com.example.mapper;
+package com.example.binance.mapper;
 
-import com.example.entity.KlineEntity;
+import com.example.binance.entity.KlineEntity;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;

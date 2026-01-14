@@ -1,4 +1,4 @@
-package com.example.entity;
+package com.example.binance.entity;
 
 public class KlineEntity {
     /** 开盘时间（毫秒级时间戳，主键） */
