@@ -5,6 +5,7 @@ import cn.hutool.core.date.DateTime;
 import com.example.binance.api.BinanceFApi;
 import com.example.binance.config.BinanceIntervalEnum;
 import com.example.binance.entity.KlineEntity;
+import com.example.binance.mapper.KlineMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,11 +20,13 @@ import java.util.List;
 public class BinanceFApiTest {
     @Autowired
     private BinanceFApi binanceFApi;
+    @Autowired
+    private KlineMapper klineMapper;
 
     @Test
     void getKlineData_shouldWork() {
         String startTimeStr = "2025-01-01 00:00:00";
-        String endTimeStr = "2025-01-01 00:10:00";
+        String endTimeStr = "2025-01-01 23:59:59";
         DateTime startTime = new DateTime(startTimeStr, DatePattern.NORM_DATETIME_FORMAT);
         DateTime endTime = new DateTime(endTimeStr, DatePattern.NORM_DATETIME_FORMAT);
         String symbol = "BTCUSDT";
@@ -31,5 +34,7 @@ public class BinanceFApiTest {
         for (KlineEntity k : list) {
             log.info("k: {}", k);
         }
+        int i = klineMapper.batchUpsert(list);
+        log.info("insert count: {}", i);
     }
 }
