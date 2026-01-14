@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface KlineMapper {
+public interface BTCUSDT5mPMapper {
 
     /**
      * 根据开盘时间查询单条K线
@@ -26,6 +26,12 @@ public interface KlineMapper {
      */
     @Select("SELECT * FROM btcusdt_perpetual_5m_kline ORDER BY open_time ASC")
     List<KlineEntity> selectAll();
+
+    /**
+     * 查询指定时间范围的K线数据
+     */
+    @Select("SELECT * FROM btcusdt_perpetual_5m_kline WHERE open_time >= #{startTime} AND open_time <= #{endTime} ORDER BY open_time ASC")
+    List<KlineEntity> selectByTimeRange(@Param("startTime") Long startTime, @Param("endTime") Long endTime);
 
     @Insert("""
             <script>

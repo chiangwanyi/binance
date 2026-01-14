@@ -1,7 +1,7 @@
 package com.example.binance;
 
 import com.example.binance.entity.KlineEntity;
-import com.example.binance.mapper.KlineMapper;
+import com.example.binance.mapper.BTCUSDT5mPMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,14 +15,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @SpringBootTest
 @ActiveProfiles("test")
 @Slf4j
-class KlineMapperTest {
+class BTCUSDT5mPMapperTest {
 
     @Autowired
-    private KlineMapper klineMapper;
+    private BTCUSDT5mPMapper BTCUSDT5mPMapper;
 
     @Test
     void selectAll_shouldWork() {
-        List<KlineEntity> list = klineMapper.selectAll();
+        List<KlineEntity> list = BTCUSDT5mPMapper.selectAll();
         log.info("list: {}", list);
     }
 
@@ -42,7 +42,7 @@ class KlineMapperTest {
                 "6012.34"
         );
 
-        int rows = klineMapper.batchUpsert(List.of(k1));
+        int rows = BTCUSDT5mPMapper.batchUpsert(List.of(k1));
         assertEquals(1, rows);
     }
 
