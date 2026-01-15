@@ -240,6 +240,7 @@
 </div>
 
 <script>
+    const STORAGE_KEY = 'BTCUSDT_5M_KLINE_TIME_RANGE';
     const {createApp} = Vue
 
     createApp({
@@ -295,6 +296,17 @@
             };
         },
         mounted() {
+            // === 1. 从浏览器缓存中恢复时间 ===
+            const cache = localStorage.getItem(STORAGE_KEY);
+            if (cache) {
+                try {
+                    const { startTime, endTime } = JSON.parse(cache);
+                    if (startTime) this.startTime = startTime;
+                    if (endTime) this.endTime = endTime;
+                } catch (e) {
+                    console.warn('时间缓存解析失败，已忽略');
+                }
+            }
             // 初始化图表
             this.initChart();
             // 初始化十字光标监听
@@ -314,7 +326,28 @@
                 this.chart.unsubscribeCrosshairMove(this.renderOverlay);
             }
         },
+        watch: {
+            startTime: {
+                handler() {
+                    this.saveTimeRangeToCache();
+                }
+            },
+            endTime: {
+                handler() {
+                    this.saveTimeRangeToCache();
+                }
+            }
+        },
         methods: {
+            saveTimeRangeToCache() {
+                localStorage.setItem(
+                    STORAGE_KEY,
+                    JSON.stringify({
+                        startTime: this.startTime,
+                        endTime: this.endTime
+                    })
+                );
+            },
             /**
              * 设置当前激活的绘图工具
              */
@@ -1048,7 +1081,7 @@
                     }
 
                     // 调用后台接口
-                    const response = await fetch(`${this.apiBaseUrl}/c/binance/kline_range?s=BTCUSDT&i=5m&start=${this.startTime}&end=${this.endTime}`, {
+                    const response = await fetch(`${this.apiBaseUrl}/c/binance/kline_range?s=BTCUSDT&i=5m&start=${this.startTime}&end=${this.endTime}&force=false`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
