@@ -145,8 +145,32 @@
                 <button :class="{active: activeTool==='trendline'}" @click="setTool('trendline')">趋势线</button>
                 <button :class="{active: activeTool==='rect'}" @click="setTool('rect')">矩形</button>
                 <button :class="{active: activeTool==='rr'}" @click="setTool('rr')">盈亏比</button>
+                <button style="color: red" @click="clearAllOverlays">clear</button>
             </div>
-            <button @click="clearAllOverlays">清除所有绘图</button>
+        </div>
+        <div class="card">
+            <h3>合约模拟器</h3>
+            <div style="display: flex;flex-direction: row;gap: 4px;">
+                <!-- 数量 -->
+                <div>
+                    <label>数量</label>
+                    <input type="number" step="0.0001" style="width: 80px" v-model.number="simQty" @input="this.calcContractSim">
+                </div>
+                <!-- 杠杆 -->
+                <div>
+                    <label>杠杆</label>
+                    <input type="number" min="1" max="100" style="width: 80px" v-model.number="simLeverage" @input="this.calcContractSim">
+                </div>
+                <div>
+                    <label>开仓价</label>
+                    <input type="number" v-model.number="simEntryPrice" style="width: 80px" @input="this.calcContractSim" placeholder="点击图表自动填充或手动输入">
+                </div>
+            </div>
+            <!-- 方向 -->
+            <div style="display: flex;flex-direction: row;gap: 4px;">
+                <button @click="this.positionSide = 'long';this.calcContractSim" style="color: green">开多</button>
+                <button @click="this.positionSide = 'short';this.calcContractSim" style="color: red">开空</button>
+            </div>
         </div>
         <div class="card">
             <h3>价格线管理</h3>
@@ -205,6 +229,7 @@
                 <button @click="loadKlineByDateRange(1, 1, step)">结束后移{{step}}m</button>
             </div>
         </div>
+
     </div>
 
     <!-- 右侧图表 -->
@@ -291,6 +316,24 @@
                 priceLines: [], // 已添加的价格线列表，每项结构：{title, price, color, visible, series}
                 editingPriceLineIndex: -1, // 正在编辑的价格线索引（-1表示未编辑）
 
+                // 合约模拟器
+                isSim: false,
+                positionSide: 'long', // long | short
+                // 下单数量
+                simQty: 0.01,
+                // 杠杆
+                simLeverage: 60,
+                // 开仓价
+                simEntryPrice: null,
+                // 初始保证金
+                simMargin: null,
+                // 爆仓价（强平价格）
+                simLiqPrice: null,
+                // 挂单手续费率
+                feeMaker: 0.0002,
+                // 吃单手续费率
+                feeTaker: 0.0006,
+
                 // API基础地址
                 apiBaseUrl: 'http://localhost:8765'
             };
@@ -339,6 +382,7 @@
             }
         },
         methods: {
+            calcContractSim() {},
             saveTimeRangeToCache() {
                 localStorage.setItem(
                     STORAGE_KEY,
@@ -424,7 +468,7 @@
             },
             // 添加价格线
             addPriceLine() {
-                if (!this.newPriceLine.title || !this.newPriceLine.price) {
+                if (!this.newPriceLine.price) {
                     this.showOperateMsg('名称和价格不能为空', false);
                     return;
                 }
@@ -438,7 +482,7 @@
                     // 更新图表中的价格线样式和数据
                     editLine.series.applyOptions({
                         color: editLine.color,
-                        title: editLine.title
+                        // title: editLine.title
                     });
                     this.updatePriceLineData(editLine);
                     this.editingPriceLineIndex = -1;
@@ -449,14 +493,14 @@
                         color: this.newPriceLine.color,
                         lineWidth: 2,
                         crosshairMarkerVisible: false,
-                        title: this.newPriceLine.title,
+                        // title: this.newPriceLine.title,
                     });
                     // 构造价格线数据（横向线需要相同价格的首尾数据）
                     const priceLineData = this.buildPriceLineData(Number(this.newPriceLine.price));
                     lineSeries.setData(priceLineData);
 
                     this.priceLines.push({
-                        title: this.newPriceLine.title,
+                        // title: this.newPriceLine.title,
                         price: Number(this.newPriceLine.price),
                         color: this.newPriceLine.color,
                         visible: true,
@@ -1059,6 +1103,9 @@
                         const price = this.candleSeries.coordinateToPrice(param.point.y);
                         if (price) {
                             this.newPriceLine.price = price.toFixed(1); // 保留1位小数
+                            if (!this.isSim) {
+                                this.simEntryPrice = price.toFixed(1); // 保留1位小数
+                            }
                         }
                     }
                 });
