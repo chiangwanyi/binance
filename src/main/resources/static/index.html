@@ -189,7 +189,10 @@
                 <label>结束时间
                     <input type="datetime-local" v-model="endTime">
                 </label>
-                <button @click="loadKlineByDateRange(0, 0, 0)">加载数据</button>
+                <div style="display: flex;flex-direction: row;gap: 2px;">
+                    <button @click="loadKlineByDateRange(0, 0, 0)">加载数据</button>
+                    <button @click="reDownloadKlineByDateRange()">刷新数据</button>
+                </div>
             </div>
             <br>
             <label>快捷操作
@@ -1046,6 +1049,50 @@
 
                     // 调用后台接口
                     const response = await fetch(`${this.apiBaseUrl}/c/binance/kline_range?s=BTCUSDT&i=5m&start=${this.startTime}&end=${this.endTime}`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(errorText || `请求失败：${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    this.currentKlineData = result.data || [];
+                    this.currentStep = this.targetStep;
+
+                    // 转换数据格式并渲染图表
+                    const chartData = this.currentKlineData.map(item => ({
+                        time: Math.floor(item["openTime"] / 1000), // 转换为秒级时间戳
+                        open: parseFloat(item["openPrice"]),
+                        high: parseFloat(item["highPrice"]),
+                        low: parseFloat(item["lowPrice"]),
+                        close: parseFloat(item["closePrice"])
+                    }));
+                    this.candleSeries.setData(chartData);
+                    const ema20Data = this.calculateEMA(chartData, 20);
+                    this.ema20Series.setData(ema20Data);
+                    this.chart.timeScale().fitContent();
+
+                    this.showOperateMsg(`成功加载${this.targetStep}根K线`, true);
+                } catch (error) {
+                    console.error('加载K线失败：', error);
+                    this.showOperateMsg(`加载失败：${error.message}`, false);
+                } finally {
+                    this.isLoading = false;
+                }
+            },
+
+            async reDownloadKlineByDateRange() {
+                this.isLoading = true;
+                this.operateMsg = '';
+                try {
+                    // 调用后台接口
+                    const response = await fetch(`${this.apiBaseUrl}/c/binance/kline_range?s=BTCUSDT&i=5m&start=${this.startTime}&end=${this.endTime}&force=true`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
