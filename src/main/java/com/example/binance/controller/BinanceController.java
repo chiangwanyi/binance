@@ -1,6 +1,5 @@
 package com.example.binance.controller;
 
-import cn.hutool.core.date.DatePattern;
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.util.StrUtil;
 import com.example.binance.api.BinanceFApi;
@@ -9,9 +8,11 @@ import com.example.binance.config.BinanceIntervalEnum;
 import com.example.binance.entity.KlineEntity;
 import com.example.binance.mapper.BTCUSDT5mPMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
