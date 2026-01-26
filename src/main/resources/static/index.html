@@ -415,7 +415,11 @@
                 this.chart = LightweightCharts.createChart(this.$refs.chartEl, {
                     layout: {background: {color: '#020617'}, textColor: '#cbd5f5'},
                     grid: {vertLines: {color: '#1e293b'}, horzLines: {color: '#1e293b'}},
-                    timeScale: {timeVisible: true, secondsVisible: false},
+                    timeScale: {
+                        timeVisible: true,
+                        secondsVisible: false,
+                        rightOffset: 30
+                    },
                     crosshair: {
                         horzLine: {
                             color: '#999',
