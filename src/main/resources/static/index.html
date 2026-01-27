@@ -213,20 +213,23 @@
                 <label>结束时间
                     <input type="datetime-local" v-model="endTime">
                 </label>
+                <label>时间周期
+                    <select v-model="interval">
+                        <option value="5m">5m</option>
+                        <option value="1h">1h</option>
+                    </select>
+                </label>
                 <div style="display: flex;flex-direction: row;gap: 2px;">
-                    <button @click="loadKlineByDateRange(0, 0, 0)">加载数据</button>
+                    <button @click="loadKlineByDateRange(0, 0)">加载数据</button>
                     <button @click="reDownloadKlineByDateRange()">刷新数据</button>
                 </div>
             </div>
             <br>
-            <label>快捷操作
-                <input type="number" step="5" min="5" v-model="step">
-            </label>
             <div style="display: flex;flex-direction: row;gap: 2px;">
-                <button @click="loadKlineByDateRange(-1, -1, step)">起始前移{{step}}m</button>
-                <button @click="loadKlineByDateRange(-1, 1, step)">起始后移{{step}}m</button>
-                <button @click="loadKlineByDateRange(1, -1, step)">结束前移{{step}}m</button>
-                <button @click="loadKlineByDateRange(1, 1, step)">结束后移{{step}}m</button>
+                <button @click="loadKlineByDateRange(-1, -1)">起始前移</button>
+                <button @click="loadKlineByDateRange(-1, 1)">起始后移</button>
+                <button @click="loadKlineByDateRange(1, -1)">结束前移</button>
+                <button @click="loadKlineByDateRange(1, 1)">结束后移</button>
             </div>
         </div>
 
@@ -278,6 +281,7 @@
                 // 日期
                 startTime: '2025-01-01T00:00',
                 endTime: '2025-01-01T12:00',
+                interval: '5m',
 
                 // 业务数据
                 step: 5,
@@ -343,9 +347,10 @@
             const cache = localStorage.getItem(STORAGE_KEY);
             if (cache) {
                 try {
-                    const { startTime, endTime } = JSON.parse(cache);
+                    const { startTime, endTime, interval } = JSON.parse(cache);
                     if (startTime) this.startTime = startTime;
                     if (endTime) this.endTime = endTime;
+                    if (interval) this.interval = interval;
                 } catch (e) {
                     console.warn('时间缓存解析失败，已忽略');
                 }
@@ -372,23 +377,29 @@
         watch: {
             startTime: {
                 handler() {
-                    this.saveTimeRangeToCache();
+                    this.saveCache();
                 }
             },
             endTime: {
                 handler() {
-                    this.saveTimeRangeToCache();
+                    this.saveCache();
+                }
+            },
+            interval: {
+                handler() {
+                    this.saveCache();
                 }
             }
         },
         methods: {
             calcContractSim() {},
-            saveTimeRangeToCache() {
+            saveCache() {
                 localStorage.setItem(
                     STORAGE_KEY,
                     JSON.stringify({
                         startTime: this.startTime,
-                        endTime: this.endTime
+                        endTime: this.endTime,
+                        interval: this.interval
                     })
                 );
             },
@@ -1118,21 +1129,29 @@
             /**
              * 加载指定日期范围的K线数据
              */
-            async loadKlineByDateRange(targetTime, direction, step) {
+            async loadKlineByDateRange(targetTime, direction) {
                 this.isLoading = true;
                 this.operateMsg = '';
                 try {
                     // 移动开始时间
                     if (targetTime === -1) {
-                        this.startTime = new Date(new Date(Date.parse(this.startTime) + direction * step * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
+                        if (this.interval === '5m') {
+                            this.startTime = new Date(new Date(Date.parse(this.startTime) + direction * 5 * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
+                        } else if (this.interval === '1h') {
+                            this.startTime = new Date(new Date(Date.parse(this.startTime) + direction * 60 * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
+                        }
                     }
                     // 移动结束时间
                     else if (targetTime === 1) {
-                        this.endTime = new Date(new Date(Date.parse(this.endTime) + direction * step * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
+                        if (this.interval === '5m') {
+                            this.endTime = new Date(new Date(Date.parse(this.endTime) + direction * 5 * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
+                        } else if (this.interval === '1h') {
+                            this.endTime = new Date(new Date(Date.parse(this.endTime) + direction * 60 * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
+                        }
                     }
 
                     // 调用后台接口
-                    const response = await fetch(`${this.apiBaseUrl}/c/binance/kline_range?s=BTCUSDT&i=5m&start=${this.startTime}&end=${this.endTime}&force=false`, {
+                    const response = await fetch(`${this.apiBaseUrl}/c/binance/kline_range?s=BTCUSDT&i=${this.interval}&start=${this.startTime}&end=${this.endTime}&force=false`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1176,7 +1195,7 @@
                 this.operateMsg = '';
                 try {
                     // 调用后台接口
-                    const response = await fetch(`${this.apiBaseUrl}/c/binance/kline_range?s=BTCUSDT&i=5m&start=${this.startTime}&end=${this.endTime}&force=true`, {
+                    const response = await fetch(`${this.apiBaseUrl}/c/binance/kline_range?s=BTCUSDT&i=${this.interval}&start=${this.startTime}&end=${this.endTime}&force=true`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1235,22 +1254,6 @@
                 this.rectTemp = null;
                 this.rrTemp = null;
                 this.renderOverlay();
-            },
-
-            /**
-             * 上一步
-             */
-            async prevStep() {
-                const targetStep = this.currentStep - 1;
-                await this.loadSpecifiedStep(targetStep);
-            },
-
-            /**
-             * 下一步
-             */
-            async nextStep() {
-                const targetStep = this.currentStep + 1;
-                await this.loadSpecifiedStep(targetStep);
             },
 
             /**

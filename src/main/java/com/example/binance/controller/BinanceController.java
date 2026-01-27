@@ -6,6 +6,7 @@ import com.example.binance.api.BinanceFApi;
 import com.example.binance.config.AjaxResult;
 import com.example.binance.config.BinanceIntervalEnum;
 import com.example.binance.entity.KlineEntity;
+import com.example.binance.mapper.BTCUSDT1hPMapper;
 import com.example.binance.mapper.BTCUSDT5mPMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +22,9 @@ import java.util.Objects;
 public class BinanceController {
     @Autowired
     private BTCUSDT5mPMapper btcusdt5mPMapper;
+    @Autowired
+    private BTCUSDT1hPMapper btcusdt1hPMapper;
+
     @Autowired
     private BinanceFApi binanceFApi;
 
@@ -47,7 +51,7 @@ public class BinanceController {
             return AjaxResult.error("开始时间不能大于结束时间");
         }
         switch (interval) {
-            case "5m":
+            case "5m": {
                 List<KlineEntity> values;
                 if (force) {
                     values = binanceFApi.getKlineData(symbol, BinanceIntervalEnum.M5, startTime.getTime(), endTime.getTime(), 1000);
@@ -76,6 +80,37 @@ public class BinanceController {
                     item.setOpenTime(item.getOpenTime() + 8 * 60 * 60 * 1000);
                 });
                 return AjaxResult.success(values);
+            }
+            case "1h": {
+                List<KlineEntity> values;
+                if (force) {
+                    values = binanceFApi.getKlineData(symbol, BinanceIntervalEnum.H1, startTime.getTime(), endTime.getTime(), 1000);
+                    btcusdt1hPMapper.batchUpsert(values);
+                } else {
+                    values = btcusdt1hPMapper.selectByTimeRange(startTime.getTime(), endTime.getTime());
+                    if (values.isEmpty()) {
+                        values = binanceFApi.getKlineData(symbol, BinanceIntervalEnum.H1, startTime.getTime(), endTime.getTime(), 1000);
+                        btcusdt1hPMapper.batchUpsert(values);
+                    } else {
+                        KlineEntity first = values.getFirst();
+                        if (first.getOpenTime() > startTime.getTime()) {
+                            List<KlineEntity> newValues = binanceFApi.getKlineData(symbol, BinanceIntervalEnum.H1, startTime.getTime(), first.getOpenTime(), 1000);
+                            btcusdt1hPMapper.batchUpsert(newValues);
+                        }
+                        KlineEntity last = values.getLast();
+                        if (last.getOpenTime() < endTime.getTime()) {
+                            List<KlineEntity> newValues = binanceFApi.getKlineData(symbol, BinanceIntervalEnum.H1, last.getOpenTime(), endTime.getTime(), 1000);
+                            btcusdt1hPMapper.batchUpsert(newValues);
+                        }
+                        values = btcusdt1hPMapper.selectByTimeRange(startTime.getTime(), endTime.getTime());
+                    }
+                }
+                values.forEach(item -> {
+                    // 将item的openTime + 8小时
+                    item.setOpenTime(item.getOpenTime() + 8 * 60 * 60 * 1000);
+                });
+                return AjaxResult.success(values);
+            }
             default:
                 return AjaxResult.error("暂不支持该时间间隔");
         }
