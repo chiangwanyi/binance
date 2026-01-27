@@ -93,6 +93,12 @@ public class BinanceController {
                 values = values.stream()
                         .filter(value -> {
                             DateTime dateTime = DateUtil.date(value.getOpenTime()).offset(DateField.HOUR_OF_DAY, -13);
+                            // Calendar.DAY_OF_WEEK：1=周日，2=周一，3=周二，4=周三，5=周四，6=周五，7=周六
+                            int dayOfWeek = dateTime.getField(Calendar.DAY_OF_WEEK);
+                            return dayOfWeek >= 2 && dayOfWeek <= 6; // 周末直接过滤
+                        })
+                        .filter(value -> {
+                            DateTime dateTime = DateUtil.date(value.getOpenTime()).offset(DateField.HOUR_OF_DAY, -13);
                             // 2. 正确获取24小时制小时和分钟（核心修正）
                             int hour = dateTime.getField(Calendar.HOUR_OF_DAY); // 24小时制小时
                             int minute = dateTime.getField(Calendar.MINUTE);    // 分钟
