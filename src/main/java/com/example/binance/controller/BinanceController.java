@@ -1,5 +1,6 @@
 package com.example.binance.controller;
 
+import cn.hutool.core.date.DateField;
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.util.StrUtil;
 import com.example.binance.api.BinanceFApi;
@@ -38,7 +39,8 @@ public class BinanceController {
                                     @RequestParam(value = "i") String interval,
                                     @RequestParam(value = "start") String startTimeStr,
                                     @RequestParam(value = "end") String endTimeStr,
-                                    @RequestParam(value = "force", required = false) Boolean force) {
+                                    @RequestParam(value = "force", required = false) Boolean force,
+                                    @RequestParam(value = "location") String location) {
         if (StrUtil.isBlank(symbol) || StrUtil.isBlank(interval) || StrUtil.isBlank(startTimeStr) || StrUtil.isBlank(endTimeStr)) {
             return AjaxResult.error("参数错误");
         }
@@ -47,6 +49,11 @@ public class BinanceController {
         }
         DateTime startTime = new DateTime(startTimeStr, "yyyy-MM-dd'T'HH:mm");
         DateTime endTime = new DateTime(endTimeStr, "yyyy-MM-dd'T'HH:mm");
+        // 如果location为et（即美东时间），则将startTime和endTime分别加上13小时
+        if (Objects.equals(location, "et")) {
+            startTime = startTime.offset(DateField.HOUR_OF_DAY, 13);
+            endTime = endTime.offset(DateField.HOUR_OF_DAY, 13);
+        }
         if (startTime.isAfter(endTime)) {
             return AjaxResult.error("开始时间不能大于结束时间");
         }

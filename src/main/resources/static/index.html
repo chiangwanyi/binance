@@ -207,6 +207,12 @@
         <div class="card">
             <h3>K线加载</h3>
             <div style="display: flex;flex-direction: column;">
+                <label>盘面
+                    <select v-model="location">
+                        <option value="utc8">常规UTC+8</option>
+                        <option value="et">美东9:30~16:10</option>
+                    </select>
+                </label>
                 <label>起始时间
                     <input type="datetime-local" v-model="startTime">
                 </label>
@@ -252,7 +258,7 @@
         <div ref="tooltipEl"
              :style="{top: tooltipPos.top+'px', left: tooltipPos.left+'px', opacity: tooltipPos.opacity}">
             <div v-if="currentKline">
-                <div><span>时间</span><b>{{ formatTimestamp(currentKline["openTime"]) }}</b></div>
+                <div><span>时间(UTC+8)</span><b>{{ formatTimestamp(currentKline["openTime"]) }}</b></div>
                 <div><span>开盘</span><b>{{ currentKline["openPrice"] }}</b></div>
                 <div><span>最高</span><b>{{ currentKline["highPrice"] }}</b></div>
                 <div><span>最低</span><b>{{ currentKline["lowPrice"] }}</b></div>
@@ -282,6 +288,7 @@
                 startTime: '2025-01-01T00:00',
                 endTime: '2025-01-01T12:00',
                 interval: '5m',
+                location: 'utc8',
 
                 // 业务数据
                 step: 5,
@@ -347,10 +354,11 @@
             const cache = localStorage.getItem(STORAGE_KEY);
             if (cache) {
                 try {
-                    const { startTime, endTime, interval } = JSON.parse(cache);
+                    const { startTime, endTime, interval, location } = JSON.parse(cache);
                     if (startTime) this.startTime = startTime;
                     if (endTime) this.endTime = endTime;
                     if (interval) this.interval = interval;
+                    if (location) this.location = location;
                 } catch (e) {
                     console.warn('时间缓存解析失败，已忽略');
                 }
@@ -389,7 +397,12 @@
                 handler() {
                     this.saveCache();
                 }
-            }
+            },
+            location: {
+                handler() {
+                    this.saveCache();
+                }
+            },
         },
         methods: {
             calcContractSim() {},
@@ -399,7 +412,8 @@
                     JSON.stringify({
                         startTime: this.startTime,
                         endTime: this.endTime,
-                        interval: this.interval
+                        interval: this.interval,
+                        location: this.location
                     })
                 );
             },
@@ -1151,7 +1165,7 @@
                     }
 
                     // 调用后台接口
-                    const response = await fetch(`${this.apiBaseUrl}/c/binance/kline_range?s=BTCUSDT&i=${this.interval}&start=${this.startTime}&end=${this.endTime}&force=false`, {
+                    const response = await fetch(`${this.apiBaseUrl}/c/binance/kline_range?s=BTCUSDT&i=${this.interval}&start=${this.startTime}&end=${this.endTime}&force=false&location=${this.location}`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1195,7 +1209,7 @@
                 this.operateMsg = '';
                 try {
                     // 调用后台接口
-                    const response = await fetch(`${this.apiBaseUrl}/c/binance/kline_range?s=BTCUSDT&i=${this.interval}&start=${this.startTime}&end=${this.endTime}&force=true`, {
+                    const response = await fetch(`${this.apiBaseUrl}/c/binance/kline_range?s=BTCUSDT&i=${this.interval}&start=${this.startTime}&end=${this.endTime}&force=true&location=${this.location}`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
