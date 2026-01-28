@@ -330,6 +330,8 @@
                     rectTemp: null,        // 临时矩形数据
                     rrTools: [],           // 盈亏比工具数据
                     rrTemp: null,          // 临时盈亏比数据
+                    mmTools: [],           // Measured Move 工具数据
+                    mmTemp: null,          // 临时Measured Move 数据
                     currentMouseX: 0,      // 当前鼠标X坐标
                     currentMouseY: 0,      // 当前鼠标Y坐标
 
@@ -454,6 +456,7 @@
                     this.overlayTempPoint = null;
                     this.rectTemp = null;
                     this.rrTemp = null;
+                    this.mmTemp = null;
                 },
                 /**
                  * 初始化图表
@@ -632,10 +635,12 @@
                     this.trendLines = [];
                     this.rects = [];
                     this.rrTools = [];
+                    this.mmTools = [];
 
                     this.overlayTempPoint = null;
                     this.rectTemp = null;
                     this.rrTemp = null;
+                    this.mmTemp = null;
 
                     this.renderOverlay();
                     this.showOperateMsg('已清除所有绘图元素', true);
@@ -669,6 +674,8 @@
                     this.renderRects(svg);
                     // 渲染盈亏比工具
                     this.renderRRTools(svg);
+                    // 渲染MM工具
+                    this.renderMMTools(svg);
                     // 渲染临时绘制的元素
                     this.renderTempElements(svg);
                     // 渲染 K 线序号（Bar Count）
@@ -808,6 +815,48 @@
                         }
                     });
                 },
+                renderMMTools(svg) {
+                    this.mmTools.forEach(mm => {
+                        // 增加严格的空值检查
+                        if (!mm || !mm.entryTime || !mm.entryPrice || !mm.stopTime || !mm.stopPrice) return;
+
+                        // 计算价格差值
+                        const priceDiff = Math.abs(mm.entryPrice - mm.stopPrice);
+                        const direction = mm.stopPrice > mm.entryPrice ? -1 : 1; // 1=向上，-1=向下
+
+                        // 绘制止损区域（红色）
+                        this.drawMMRect(svg, {
+                            t1: mm.entryTime,
+                            p1: mm.entryPrice,
+                            t2: mm.stopTime,
+                            p2: mm.stopPrice
+                        }, '#c6cbf6', 0);
+
+                        // 绘制1倍目标区域（蓝色）
+                        this.drawMMRect(svg, {
+                            t1: mm.entryTime,
+                            p1: mm.entryPrice + direction * priceDiff * 1,
+                            t2: mm.stopTime,
+                            p2: mm.entryPrice
+                        }, '#c6cbf6', 0);
+
+                        // 绘制2倍目标区域（绿色）
+                        this.drawMMRect(svg, {
+                            t1: mm.entryTime,
+                            p1: mm.entryPrice + direction * priceDiff * 2,
+                            t2: mm.stopTime,
+                            p2: mm.entryPrice + direction * priceDiff * 1
+                        }, '#c6cbf6', 0);
+
+                        // 绘制3倍目标区域（黄色）
+                        this.drawMMRect(svg, {
+                            t1: mm.entryTime,
+                            p1: mm.entryPrice + direction * priceDiff * 3,
+                            t2: mm.stopTime,
+                            p2: mm.entryPrice + direction * priceDiff * 2
+                        }, '#c6cbf6', 0);
+                    });
+                },
                 /**
                  * 渲染临时绘制的元素（增强盈亏比预览效果）
                  */
@@ -904,6 +953,54 @@
                                 entryLine.setAttribute('stroke-dasharray', '3,3');
                                 svg.appendChild(entryLine);
                             }
+                        }
+                    }
+
+                    // 渲染临时MM工具（完整预览效果）
+                    if (this.mmTemp && this.activeTool === 'mm') {
+                        // 增加空值检查
+                        if (!this.mmTemp || !this.mmTemp.entryTime || !this.mmTemp.entryPrice) return;
+
+                        // 计算当前拖拽的止损价格
+                        const currentStopPrice = this.mmTemp.stopPrice || this.mmTemp.entryPrice;
+
+                        // 只在有价格差时才显示目标预览
+                        if (Math.abs(this.mmTemp.entryPrice - currentStopPrice) > 0) {
+                            // 计算价格差值
+                            const priceDiff = Math.abs(this.mmTemp.entryPrice - currentStopPrice);
+                            const direction = currentStopPrice > this.mmTemp.entryPrice ? -1 : 1;
+
+                            // 预览止损区域（红色，透明度降低）
+                            this.drawMMRect(svg, {
+                                t1: this.mmTemp.entryTime,
+                                p1: this.mmTemp.entryPrice,
+                                t2: this.mmTemp.stopTime || this.mmTemp.entryTime,
+                                p2: currentStopPrice
+                            }, '#c6cbf6', 0);
+
+                            // 预览1倍目标区域（蓝色，透明度降低）
+                            this.drawMMRect(svg, {
+                                t1: this.mmTemp.entryTime,
+                                p1: this.mmTemp.entryPrice + direction * priceDiff * 1,
+                                t2: this.mmTemp.stopTime || this.mmTemp.entryTime,
+                                p2: this.mmTemp.entryPrice
+                            }, '#c6cbf6', 0);
+
+                            // 预览2倍目标区域（绿色，透明度降低）
+                            this.drawMMRect(svg, {
+                                t1: this.mmTemp.entryTime,
+                                p1: this.mmTemp.entryPrice + direction * priceDiff * 2,
+                                t2: this.mmTemp.stopTime || this.mmTemp.entryTime,
+                                p2: this.mmTemp.entryPrice + direction * priceDiff * 1
+                            }, '#c6cbf6', 0);
+
+                            // 预览3倍目标区域（黄色，透明度降低）
+                            this.drawMMRect(svg, {
+                                t1: this.mmTemp.entryTime,
+                                p1: this.mmTemp.entryPrice + direction * priceDiff * 3,
+                                t2: this.mmTemp.stopTime || this.mmTemp.entryTime,
+                                p2: this.mmTemp.entryPrice + direction * priceDiff * 2
+                            }, '#c6cbf6', 0);
                         }
                     }
                 },
@@ -1026,6 +1123,72 @@
 
                     // 注意：不绘制左右边框，实现去掉左右边框的效果
                 },
+                drawMMRect(svg, rect, color, opacity) {
+                    // 增加严格的空值检查，防止传入无效数据
+                    if (!svg || !rect || rect.t1 == null || rect.t2 == null || rect.p1 == null || rect.p2 == null) {
+                        return;
+                    }
+
+                    // 先检查时间值是否有效
+                    let x1, x2, y1, y2;
+                    try {
+                        x1 = this.chart.timeScale().timeToCoordinate(rect.t1);
+                        x2 = this.chart.timeScale().timeToCoordinate(rect.t2);
+                        y1 = this.candleSeries.priceToCoordinate(rect.p1);
+                        y2 = this.candleSeries.priceToCoordinate(rect.p2);
+                    } catch (e) {
+                        // 捕获timeToCoordinate的异常，防止控制台报错
+                        console.debug('绘制盈亏比矩形时坐标转换失败:', e);
+                        return;
+                    }
+
+                    // 检查转换后的坐标是否有效
+                    if (x1 == null || x2 == null || y1 == null || y2 == null) return;
+
+                    // 计算矩形的实际坐标
+                    const rx = Math.min(x1, x2);
+                    const ry = Math.min(y1, y2);
+                    const width = Math.abs(x2 - x1);
+                    const height = Math.abs(y2 - y1);
+
+                    // 只绘制有实际大小的矩形
+                    if (width <= 0 || height <= 0) return;
+
+                    // 1. 创建填充矩形（无描边）
+                    const fillRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    fillRect.setAttribute('x', rx);
+                    fillRect.setAttribute('y', ry);
+                    fillRect.setAttribute('width', width);
+                    fillRect.setAttribute('height', height);
+                    fillRect.setAttribute('fill', color);
+                    fillRect.setAttribute('fill-opacity', opacity);
+                    fillRect.setAttribute('stroke', 'none'); // 去掉所有边框
+                    svg.appendChild(fillRect);
+
+                    // 2. 绘制上边框（虚线）
+                    const topLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    topLine.setAttribute('x1', rx);
+                    topLine.setAttribute('y1', ry);
+                    topLine.setAttribute('x2', rx + width);
+                    topLine.setAttribute('y2', ry);
+                    topLine.setAttribute('stroke', color);
+                    topLine.setAttribute('stroke-width', '1');
+                    topLine.setAttribute('stroke-opacity', '0.8');
+                    svg.appendChild(topLine);
+
+                    // 3. 绘制下边框（虚线）
+                    const bottomLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    bottomLine.setAttribute('x1', rx);
+                    bottomLine.setAttribute('y1', ry + height);
+                    bottomLine.setAttribute('x2', rx + width);
+                    bottomLine.setAttribute('y2', ry + height);
+                    bottomLine.setAttribute('stroke', color);
+                    bottomLine.setAttribute('stroke-width', '1');
+                    bottomLine.setAttribute('stroke-opacity', '0.8');
+                    svg.appendChild(bottomLine);
+
+                    // 注意：不绘制左右边框，实现去掉左右边框的效果
+                },
                 /**
                  * Overlay指针按下事件
                  */
@@ -1039,6 +1202,8 @@
                         this.handleRectDown(e);
                     } else if (this.activeTool === 'rr') {
                         this.handleRRDown(e);
+                    } else if (this.activeTool === 'mm') {
+                        this.handleMMDown(e);
                     }
                 },
                 /**
@@ -1068,6 +1233,16 @@
                         this.rrTemp.stopTime = t;
                         this.rrTemp.stopPrice = p;
                         this.renderOverlay();
+                    } else if (this.activeTool === 'mm' && this.mmTemp) {
+                        // 增加空值检查
+                        if (!this.mmTemp) return;
+
+                        const t = this.chart.timeScale().coordinateToTime(e.offsetX);
+                        const p = this.candleSeries.coordinateToPrice(e.offsetY);
+                        if (!t || p == null) return;
+                        this.mmTemp.stopTime = t;
+                        this.mmTemp.stopPrice = p;
+                        this.renderOverlay();
                     }
                 },
                 /**
@@ -1096,6 +1271,21 @@
                             this.showOperateMsg('盈亏比工具绘制完成，已自动生成1/2/3倍目标位', true);
                         }
                         this.rrTemp = null;
+                        this.renderOverlay();
+                    } else if (this.activeTool === 'mm' && this.mmTemp) {
+                        // 增加空值检查
+                        if (!this.mmTemp || !this.mmTemp.entryTime || !this.mmTemp.entryPrice) {
+                            this.mmTemp = null;
+                            return;
+                        }
+
+                        // 确保盈亏比矩形有实际大小
+                        if (this.mmTemp.entryTime !== this.mmTemp.stopTime &&
+                            Math.abs(this.mmTemp.entryPrice - this.mmTemp.stopPrice) > 0) {
+                            this.mmTools.push({ ...this.mmTemp });
+                            this.showOperateMsg('盈亏比工具绘制完成，已自动生成1/2/3倍目标位', true);
+                        }
+                        this.mmTemp = null;
                         this.renderOverlay();
                     }
                 },
@@ -1147,6 +1337,19 @@
                         stopPrice: p
                     };
                     this.showOperateMsg('已设置入场点，请拖拽至止损位', true);
+                },
+                handleMMDown(e) {
+                    const t = this.chart.timeScale().coordinateToTime(e.offsetX);
+                    const p = this.candleSeries.coordinateToPrice(e.offsetY);
+                    if (!t || p == null) return;
+
+                    // 初始化MM临时数据（入场点）
+                    this.mmTemp = {
+                        entryTime: t,
+                        entryPrice: p,
+                        stopTime: t,
+                        stopPrice: p
+                    };
                 },
                 /**
                  * 初始化十字光标监听（悬浮提示）
