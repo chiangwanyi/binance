@@ -140,51 +140,58 @@
 
             <div class="card">
                 <h3>绘图工具</h3>
+                <label>基础工具</label>
                 <div style="display: flex;flex-direction: row;gap: 4px;">
                     <button :class="{active: activeTool==='cursor'}" @click="setTool('cursor')">查看K线</button>
+                    <button style="color: red" @click="clearAllOverlays">清除图形</button>
+                </div>
+                <label>线段工具</label>
+                <div style="display: flex;flex-direction: row;gap: 4px;">
                     <button :class="{active: activeTool==='trendline'}" @click="setTool('trendline')">趋势线</button>
-                    <button :class="{active: activeTool==='rect'}" @click="setTool('rect')">矩形</button>
                     <button :class="{active: activeTool==='rr'}" @click="setTool('rr')">盈亏比</button>
-                    <button style="color: red" @click="clearAllOverlays">clear</button>
+                    <button :class="{active: activeTool==='mm'}" @click="setTool('mm')">MM</button>
+                </div>
+                <label>矩形工具</label>
+                <div style="display: flex;flex-direction: row;gap: 4px;">
+                    <button :class="{active: activeTool==='rect'}" @click="setTool('rect')">矩形</button>
+                    <button :class="{active: activeRectColor==='#a7eec0'}" style="color: #a7eec0" @click="activeRectColor = '#a7eec0'">绿色</button>
+                    <button :class="{active: activeRectColor==='#f46060'}"  style="color: #f46060" @click="activeRectColor = '#f46060'">红色</button>
+                    <button :class="{active: activeRectColor==='#efd763'}"  style="color: #efd763" @click="activeRectColor = '#efd763'">橙色</button>
                 </div>
             </div>
-            <div class="card">
-                <h3>合约模拟器</h3>
-                <div style="display: flex;flex-direction: row;gap: 4px;">
-                    <!-- 数量 -->
-                    <div>
-                        <label>数量</label>
-                        <input type="number" step="0.0001" style="width: 80px" v-model.number="simQty"
-                            @input="this.calcContractSim">
-                    </div>
-                    <!-- 杠杆 -->
-                    <div>
-                        <label>杠杆</label>
-                        <input type="number" min="1" max="100" style="width: 80px" v-model.number="simLeverage"
-                            @input="this.calcContractSim">
-                    </div>
-                    <div>
-                        <label>开仓价</label>
-                        <input type="number" v-model.number="simEntryPrice" style="width: 80px"
-                            @input="this.calcContractSim" placeholder="点击图表自动填充或手动输入">
-                    </div>
-                </div>
-                <!-- 方向 -->
-                <div style="display: flex;flex-direction: row;gap: 4px;">
-                    <button @click="this.positionSide = 'long';this.calcContractSim" style="color: green">开多</button>
-                    <button @click="this.positionSide = 'short';this.calcContractSim" style="color: red">开空</button>
-                </div>
-            </div>
+<!--            <div class="card">-->
+<!--                <h3>合约模拟器</h3>-->
+<!--                <div style="display: flex;flex-direction: row;gap: 4px;">-->
+<!--                    &lt;!&ndash; 数量 &ndash;&gt;-->
+<!--                    <div>-->
+<!--                        <label>数量</label>-->
+<!--                        <input type="number" step="0.0001" style="width: 80px" v-model.number="simQty"-->
+<!--                            @input="this.calcContractSim">-->
+<!--                    </div>-->
+<!--                    &lt;!&ndash; 杠杆 &ndash;&gt;-->
+<!--                    <div>-->
+<!--                        <label>杠杆</label>-->
+<!--                        <input type="number" min="1" max="100" style="width: 80px" v-model.number="simLeverage"-->
+<!--                            @input="this.calcContractSim">-->
+<!--                    </div>-->
+<!--                    <div>-->
+<!--                        <label>开仓价</label>-->
+<!--                        <input type="number" v-model.number="simEntryPrice" style="width: 80px"-->
+<!--                            @input="this.calcContractSim" placeholder="点击图表自动填充或手动输入">-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--                &lt;!&ndash; 方向 &ndash;&gt;-->
+<!--                <div style="display: flex;flex-direction: row;gap: 4px;">-->
+<!--                    <button @click="this.positionSide = 'long';this.calcContractSim" style="color: green">开多</button>-->
+<!--                    <button @click="this.positionSide = 'short';this.calcContractSim" style="color: red">开空</button>-->
+<!--                </div>-->
+<!--            </div>-->
             <div class="card">
                 <h3>价格线管理</h3>
                 <!-- 添加价格线表单 -->
-                <label>价格线名称
+                <label>价格线
                     <input type="text" v-model="newPriceLine.title" placeholder="例如：压力位、支撑位">
-                </label>
-                <label>价格值
                     <input type="number" step="0.1" v-model="newPriceLine.price" placeholder="点击图表自动填充或手动输入">
-                </label>
-                <label>价格线颜色
                     <input type="color" v-model="newPriceLine.color" value="#a7eec0">
                 </label>
                 <button @click="this.addPriceLine">添加价格线</button>
@@ -319,6 +326,7 @@
                     trendLines: [],        // 趋势线数据
                     activeTool: 'cursor',  // cursor | trendline | rect | rr
                     rects: [],             // 矩形数据
+                    activeRectColor: '#a7eec0',
                     rectTemp: null,        // 临时矩形数据
                     rrTools: [],           // 盈亏比工具数据
                     rrTemp: null,          // 临时盈亏比数据
@@ -738,7 +746,7 @@
                  */
                 renderRects(svg) {
                     this.rects.forEach(rect => {
-                        this.drawRect(svg, rect, '#f59e0b', 0.2);
+                        this.drawRect(svg, rect, rect.color, 0.2);
                     });
                 },
                 /**
@@ -759,7 +767,7 @@
                             p1: rr.entryPrice,
                             t2: rr.stopTime,
                             p2: rr.stopPrice
-                        }, '#ef4444', 0.3);
+                        }, '#ef4444', 0.1);
 
                         // 绘制1倍目标区域（蓝色）
                         this.drawRRRect(svg, {
@@ -767,7 +775,7 @@
                             p1: rr.entryPrice + direction * priceDiff * 1,
                             t2: rr.stopTime,
                             p2: rr.entryPrice
-                        }, '#3b82f6', 0.2);
+                        }, '#3b82f6', 0.1);
 
                         // 绘制2倍目标区域（绿色）
                         this.drawRRRect(svg, {
@@ -775,7 +783,7 @@
                             p1: rr.entryPrice + direction * priceDiff * 2,
                             t2: rr.stopTime,
                             p2: rr.entryPrice + direction * priceDiff * 1
-                        }, '#22c55e', 0.2);
+                        }, '#22c55e', 0.1);
 
                         // 绘制3倍目标区域（黄色）
                         this.drawRRRect(svg, {
@@ -783,7 +791,7 @@
                             p1: rr.entryPrice + direction * priceDiff * 3,
                             t2: rr.stopTime,
                             p2: rr.entryPrice + direction * priceDiff * 2
-                        }, '#eab308', 0.2);
+                        }, '#eab308', 0.1);
 
                         // 绘制入场线
                         const entryX = this.chart.timeScale().timeToCoordinate(rr.entryTime);
@@ -833,7 +841,7 @@
 
                     // 渲染临时矩形
                     if (this.rectTemp && this.activeTool === 'rect') {
-                        this.drawRect(svg, this.rectTemp, '#f59e0b', 0.1);
+                        this.drawRect(svg, this.rectTemp, this.activeRectColor, 0.1);
                     }
 
                     // 渲染临时盈亏比工具（完整预览效果）
@@ -1069,6 +1077,7 @@
                     if (this.activeTool === 'rect' && this.rectTemp) {
                         // 确保矩形有实际大小
                         if (this.rectTemp.t1 !== this.rectTemp.t2 && this.rectTemp.p1 !== this.rectTemp.p2) {
+                            this.rectTemp.color = this.activeRectColor;
                             this.rects.push({ ...this.rectTemp });
                         }
                         this.rectTemp = null;
