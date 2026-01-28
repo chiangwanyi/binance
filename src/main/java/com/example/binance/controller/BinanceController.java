@@ -18,7 +18,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.*;
+import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -62,75 +65,101 @@ public class BinanceController {
                                     @RequestParam(value = "end") String endTimeStr,
                                     @RequestParam(value = "force", required = false) Boolean force,
                                     @RequestParam(value = "location") String location) {
-        // 参数非空校验
-        if (StrUtil.isBlank(symbol) || StrUtil.isBlank(interval) || StrUtil.isBlank(startTimeStr) || StrUtil.isBlank(endTimeStr)) {
+
+        // ========= 1. 参数校验 =========
+        if (StrUtil.isBlank(symbol) || StrUtil.isBlank(interval)
+                || StrUtil.isBlank(startTimeStr) || StrUtil.isBlank(endTimeStr)) {
             return AjaxResult.error("参数错误");
         }
 
-        // 支持的交易对校验
         if (!Objects.equals(symbol, "BTCUSDT") && !Objects.equals(symbol, "ETHUSDT")) {
             return AjaxResult.error("暂不支持该交易对，仅支持BTCUSDT、ETHUSDT");
         }
 
-        // 时间格式解析
-        DateTime startTime = new DateTime(startTimeStr, "yyyy-MM-dd'T'HH:mm");
-        DateTime endTime = new DateTime(endTimeStr, "yyyy-MM-dd'T'HH:mm");
-
-        // 根据时区标识调整时间：美东时间需要加13小时转换为UTC时间
-        if (Objects.equals(location, "et")) {
-            startTime = startTime.offset(DateField.HOUR_OF_DAY, 13);
-            endTime = endTime.offset(DateField.HOUR_OF_DAY, 13);
+        // ========= 2. 确定时区（DST 核心） =========
+        ZoneId zoneId;
+        if ("et".equalsIgnoreCase(location)) {
+            // 美东时间（自动处理 EST / EDT）
+            zoneId = ZoneId.of("America/New_York");
+        } else {
+            // 默认按中国时间理解前端传参
+            zoneId = ZoneId.of("Asia/Shanghai");
         }
 
-        // 时间范围校验
-        if (startTime.isAfter(endTime)) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
+
+        // ========= 3. 前端时间 → ZonedDateTime =========
+        ZonedDateTime startZdt;
+        ZonedDateTime endZdt;
+        try {
+            startZdt = LocalDateTime.parse(startTimeStr, formatter).atZone(zoneId);
+            endZdt = LocalDateTime.parse(endTimeStr, formatter).atZone(zoneId);
+        } catch (Exception e) {
+            return AjaxResult.error("时间格式错误，应为 yyyy-MM-dd'T'HH:mm");
+        }
+
+        if (startZdt.isAfter(endZdt)) {
             return AjaxResult.error("开始时间不能大于结束时间");
         }
 
-        // 定义美股交易时间区间：9:30 到 16:10（转换为总分钟数）
-        final int START_TOTAL_MIN = 9 * 60 + 30;  // 9:30 = 570分钟
-        final int END_TOTAL_MIN = 16 * 60 + 10;   // 16:10 = 970分钟
+        // ========= 4. 统一转 UTC（用于查询 / 存储） =========
+        Instant startUtc = startZdt.toInstant();
+        Instant endUtc = endZdt.toInstant();
 
+        DateTime startUtcDate = new DateTime(startUtc);
+        DateTime endUtcDate = new DateTime(endUtc);
+
+        // ========= 5. 查询 K 线 =========
         List<KlineEntity> values;
-        // 根据时间间隔和交易对获取对应数据
         switch (interval) {
             case "5m":
-                values = getKlineDataBySymbolAndInterval(symbol, BinanceIntervalEnum.M5, startTime, endTime, force);
+                values = getKlineDataBySymbolAndInterval(
+                        symbol, BinanceIntervalEnum.M5, startUtcDate, endUtcDate, force);
                 break;
             case "1h":
-                values = getKlineDataBySymbolAndInterval(symbol, BinanceIntervalEnum.H1, startTime, endTime, force);
+                values = getKlineDataBySymbolAndInterval(
+                        symbol, BinanceIntervalEnum.H1, startUtcDate, endUtcDate, force);
                 break;
             default:
                 return AjaxResult.error("暂不支持该时间间隔，仅支持5m、1h");
         }
 
-        // 美东时区数据过滤（仅对5m数据生效，保持和原逻辑一致）
-        if (Objects.equals(location, "et") && "5m".equals(interval)) {
+        // ========= 6. 美东交易时段过滤（仅 5m） =========
+        if ("et".equalsIgnoreCase(location) && "5m".equals(interval)) {
+
+            // 美股 RTH：09:30 ~ 16:10（美东）
+            final int START_TOTAL_MIN = 9 * 60 + 30;
+            final int END_TOTAL_MIN = 16 * 60 + 10;
+
+            ZoneId etZone = ZoneId.of("America/New_York");
+
             values = values.stream()
-                    .filter(value -> {
-                        DateTime dateTime = DateUtil.date(value.getOpenTime()).offset(DateField.HOUR_OF_DAY, -13);
-                        // Calendar.DAY_OF_WEEK：1=周日，2=周一，3=周二，4=周三，5=周四，6=周五，7=周六
-                        int dayOfWeek = dateTime.getField(Calendar.DAY_OF_WEEK);
-                        return dayOfWeek >= 2 && dayOfWeek <= 6; // 周末直接过滤
+                    .filter(v -> {
+                        // UTC → 美东（DST 自动生效）
+                        ZonedDateTime etTime = Instant.ofEpochMilli(v.getOpenTime())
+                                .atZone(etZone);
+
+                        DayOfWeek day = etTime.getDayOfWeek();
+                        if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY) {
+                            return false;
+                        }
+
+                        int totalMin = etTime.getHour() * 60 + etTime.getMinute();
+                        return totalMin >= START_TOTAL_MIN && totalMin <= END_TOTAL_MIN;
                     })
-                    .filter(value -> {
-                        DateTime dateTime = DateUtil.date(value.getOpenTime()).offset(DateField.HOUR_OF_DAY, -13);
-                        // 24小时制小时和分钟
-                        int hour = dateTime.getField(Calendar.HOUR_OF_DAY);
-                        int minute = dateTime.getField(Calendar.MINUTE);
-                        // 转换为总分钟数，判断是否在区间内
-                        int currentTotalMin = hour * 60 + minute;
-                        return currentTotalMin >= START_TOTAL_MIN && currentTotalMin <= END_TOTAL_MIN;
-                    }).collect(Collectors.toList());
+                    .collect(Collectors.toList());
         }
 
-        // 时区转换：将K线数据的开盘时间加8小时（从UTC转为中国时区）
-        values.forEach(item -> {
-            item.setOpenTime(item.getOpenTime() + 8 * 60 * 60 * 1000);
+        // ========= 7. 返回给前端：统一转中国时间 =========
+        ZoneId cnZone = ZoneId.of("Asia/Shanghai");
+        values.forEach(v -> {
+            ZonedDateTime cnTime = Instant.ofEpochMilli(v.getOpenTime()).atZone(cnZone);
+            v.setOpenTime(cnTime.toInstant().toEpochMilli());
         });
 
         return AjaxResult.success(values);
     }
+
 
     /**
      * 根据交易对和时间间隔获取K线数据（抽取通用逻辑，减少代码冗余）

@@ -1,21 +1,31 @@
 package com.example.binance.api;
 
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
+import com.example.binance.entity.KlineEntity;
+import com.example.binance.mapper.BTCUSDT5mPMapper;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Component
 @Slf4j
 public class BinanceFStream {
+    @Autowired
+    private BTCUSDT5mPMapper btcusdt5mPMapper;
+
     private static final String WS_URL =
             "wss://fstream.binance.com/ws/btcusdt@kline_5m";
 
@@ -24,9 +34,11 @@ public class BinanceFStream {
     private final ScheduledExecutorService scheduler =
             Executors.newSingleThreadScheduledExecutor();
 
+    private final AtomicBoolean reconnecting = new AtomicBoolean(false);
+
     @PostConstruct
     public void start() {
-        connect();
+//        connect();
     }
 
     private void connect() {
@@ -36,11 +48,26 @@ public class BinanceFStream {
                 @Override
                 public void onOpen(ServerHandshake handshake) {
                     log.info("Binance WS connected");
+                    reconnecting.set(false);
                 }
 
                 @Override
                 public void onMessage(String message) {
-                    System.out.println("KLINE: " + message);
+                    JSONObject k = (JSONObject) JSONUtil.parse(message).getByPath("k");
+                    KlineEntity kline = new KlineEntity(
+                            k.getLong("t"),
+                            k.getStr("o"),
+                            k.getStr("h"),
+                            k.getStr("l"),
+                            k.getStr("c"),
+                            k.getStr("v"),
+                            k.getLong("T"),
+                            k.getStr("q"),
+                            k.getInt("n"),
+                            k.getStr("V"),
+                            k.getStr("Q")
+                    );
+                    btcusdt5mPMapper.batchUpsert(Arrays.asList(kline));
                 }
 
                 @Override
@@ -52,7 +79,6 @@ public class BinanceFStream {
                 @Override
                 public void onError(Exception ex) {
                     log.error("Binance WS error: {}", ex.getMessage());
-                    scheduleReconnect();
                 }
             };
 
@@ -70,14 +96,23 @@ public class BinanceFStream {
     }
 
     private void scheduleReconnect() {
+        // 已经有重连计划了，直接忽略
+        if (!reconnecting.compareAndSet(false, true)) {
+            return;
+        }
+
         scheduler.schedule(() -> {
             try {
-                if (client != null) {
+                if (client != null && !client.isClosed()) {
                     client.close();
                 }
             } catch (Exception ignored) {}
 
-            connect();
+            try {
+                connect();
+            } finally {
+                reconnecting.set(false);
+            }
         }, 5, TimeUnit.SECONDS);
     }
 }

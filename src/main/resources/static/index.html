@@ -265,7 +265,6 @@
              :style="{top: tooltipPos.top+'px', left: tooltipPos.left+'px', opacity: tooltipPos.opacity}">
             <div v-if="currentKline">
                 <div><span>时间(UTC+8)</span><b>{{ formatTimestamp(currentKline["openTime"]) }}</b></div>
-                <div><span>时间(美东)</span><b>{{ formatTimestampEt(currentKline["openTime"]) }}</b></div>
                 <div><span>开盘</span><b>{{ currentKline["openPrice"] }}</b></div>
                 <div><span>最高</span><b>{{ currentKline["highPrice"] }}</b></div>
                 <div><span>最低</span><b>{{ currentKline["lowPrice"] }}</b></div>
@@ -1304,24 +1303,7 @@
             formatTimestamp(timestamp) {
                 if (!timestamp) return '';
                 // 兼容毫秒/秒级时间戳
-                const date = new Date(timestamp.toString().length > 10 ? timestamp - 8 * 60 * 60 * 1000 : (timestamp * 1000) - 8 * 60 * 60 * 1000);
-                return new Intl.DateTimeFormat('zh-CN', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                }).format(date);
-            },
-
-            /**
-             * 格式化时间戳
-             */
-            formatTimestampEt(timestamp) {
-                if (!timestamp) return '';
-                // 兼容毫秒/秒级时间戳
-                const date = new Date(timestamp.toString().length > 10 ? timestamp - 21 * 60 * 60 * 1000 : (timestamp * 1000) - 21 * 60 * 60 * 1000);
+                const date = new Date(timestamp.toString().length > 10 ? timestamp : (timestamp * 1000));
                 return new Intl.DateTimeFormat('zh-CN', {
                     year: 'numeric',
                     month: '2-digit',
