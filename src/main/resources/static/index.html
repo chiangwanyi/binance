@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTCUSDT 5M K线管理</title>
+    <title>炒币吗？</title>
     <script src="https://unpkg.com/vue@3"></script>
     <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     <style>
@@ -136,7 +136,7 @@
 <div id="app">
     <!-- 左侧面板 -->
     <div class="left">
-        <h1>币安BTCUSDT永续合约</h1>
+        <h1>币安永续合约</h1>
 
         <div class="card">
             <h3>绘图工具</h3>
@@ -207,6 +207,12 @@
         <div class="card">
             <h3>K线加载</h3>
             <div style="display: flex;flex-direction: column;">
+                <label>标的
+                    <select v-model="symbol">
+                        <option value="BTCUSDT">BTCUSDT</option>
+                        <option value="ETHUSDT">ETHUSDT</option>
+                    </select>
+                </label>
                 <label>盘面
                     <select v-model="location">
                         <option value="utc8">常规UTC+8</option>
@@ -285,6 +291,8 @@
                 chart: null,
                 candleSeries: null,
 
+                symbol: 'BTCUSDT',
+
                 // 日期
                 startTime: '2025-01-01T00:00',
                 endTime: '2025-01-01T12:00',
@@ -355,11 +363,12 @@
             const cache = localStorage.getItem(STORAGE_KEY);
             if (cache) {
                 try {
-                    const { startTime, endTime, interval, location } = JSON.parse(cache);
+                    const { startTime, endTime, interval, location, symbol } = JSON.parse(cache);
                     if (startTime) this.startTime = startTime;
                     if (endTime) this.endTime = endTime;
                     if (interval) this.interval = interval;
                     if (location) this.location = location;
+                    if (symbol) this.symbol = symbol;
                 } catch (e) {
                     console.warn('时间缓存解析失败，已忽略');
                 }
@@ -404,6 +413,11 @@
                     this.saveCache();
                 }
             },
+            symbol: {
+                handler() {
+                    this.saveCache();
+                }
+            },
         },
         methods: {
             calcContractSim() {},
@@ -414,7 +428,8 @@
                         startTime: this.startTime,
                         endTime: this.endTime,
                         interval: this.interval,
-                        location: this.location
+                        location: this.location,
+                        symbol: this.symbol
                     })
                 );
             },
@@ -1166,7 +1181,7 @@
                     }
 
                     // 调用后台接口
-                    const response = await fetch(`${this.apiBaseUrl}/c/binance/kline_range?s=BTCUSDT&i=${this.interval}&start=${this.startTime}&end=${this.endTime}&force=false&location=${this.location}`, {
+                    const response = await fetch(`${this.apiBaseUrl}/c/binance/kline_range?s=${this.symbol}&i=${this.interval}&start=${this.startTime}&end=${this.endTime}&force=false&location=${this.location}`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1210,7 +1225,7 @@
                 this.operateMsg = '';
                 try {
                     // 调用后台接口
-                    const response = await fetch(`${this.apiBaseUrl}/c/binance/kline_range?s=BTCUSDT&i=${this.interval}&start=${this.startTime}&end=${this.endTime}&force=true&location=${this.location}`, {
+                    const response = await fetch(`${this.apiBaseUrl}/c/binance/kline_range?s=${this.symbol}&i=${this.interval}&start=${this.startTime}&end=${this.endTime}&force=true&location=${this.location}`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
