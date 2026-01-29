@@ -3,7 +3,7 @@ package com.example.binance.api;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.example.binance.entity.KlineEntity;
-import com.example.binance.mapper.BTCUSDT5mPMapper;
+import com.example.binance.mapper.btcusdt.BTCUSDT5mPMapper;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.java_websocket.client.WebSocketClient;

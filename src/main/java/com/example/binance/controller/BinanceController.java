@@ -7,6 +7,15 @@ import com.example.binance.config.AjaxResult;
 import com.example.binance.config.BinanceIntervalEnum;
 import com.example.binance.entity.KlineEntity;
 import com.example.binance.mapper.*;
+import com.example.binance.mapper.btcusdt.BTCUSDT1hPMapper;
+import com.example.binance.mapper.btcusdt.BTCUSDT5mPMapper;
+import com.example.binance.mapper.ethusdt.ETHUSDT1hPMapper;
+import com.example.binance.mapper.ethusdt.ETHUSDT5mPMapper;
+import com.example.binance.mapper.xagusdt.XAGUSDT1hPMapper;
+import com.example.binance.mapper.xagusdt.XAGUSDT5mPMapper;
+import com.example.binance.mapper.xauusdt.XAUUSDT1hPMapper;
+import com.example.binance.mapper.xauusdt.XAUUSDT5mPMapper;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,7 +25,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -41,6 +52,23 @@ public class BinanceController {
 
     @Autowired
     private BinanceFApi binanceFApi;
+
+    private Map<String, KlineBaseMapper> mapperRegistry;
+
+    @PostConstruct
+    public void initMapperRegistry() {
+        mapperRegistry = Map.of(
+                "BTCUSDT_5m", btcusdt5mPMapper,
+                "BTCUSDT_1h", btcusdt1hPMapper,
+                "ETHUSDT_5m", ethusdt5mPMapper,
+                "ETHUSDT_1h", ethusdt1hPMapper,
+                "XAUUSDT_5m", xauusdt5mPMapper,
+                "XAUUSDT_1h", xauusdt1hPMapper,
+                "XAGUSDT_5m", xagusdt5mPMapper,
+                "XAGUSDT_1h", xagusdt1hPMapper
+        );
+    }
+
 
     @GetMapping("/ping")
     public AjaxResult ping() {
@@ -73,8 +101,11 @@ public class BinanceController {
             return AjaxResult.error("参数错误");
         }
 
-        if (!Objects.equals(symbol, "BTCUSDT") && !Objects.equals(symbol, "ETHUSDT") && !Objects.equals(symbol, "XAUUSDT")) {
-            return AjaxResult.error("暂不支持该交易对，仅支持BTCUSDT、ETHUSDT、XAUUSDT");
+        Optional<String> any = mapperRegistry.keySet().stream()
+                .filter(key -> key.startsWith(symbol))
+                .findAny();
+        if (any.isEmpty()) {
+            return AjaxResult.error("暂不支持该交易对");
         }
 
         // ========= 2. 确定时区（DST 核心） =========
@@ -171,146 +202,81 @@ public class BinanceController {
      * @param force 是否强制更新
      * @return K线数据列表
      */
-    private List<KlineEntity> getKlineDataBySymbolAndInterval(String symbol, BinanceIntervalEnum interval,
-                                                              DateTime startTime, DateTime endTime, Boolean force) {
-        List<KlineEntity> values;
-        boolean isForce = force != null && force;
+    private List<KlineEntity> getKlineDataBySymbolAndInterval(
+            String symbol,
+            BinanceIntervalEnum interval,
+            DateTime startTime,
+            DateTime endTime,
+            Boolean force) {
 
-        // 根据交易对和时间间隔选择对应的Mapper
-        if ("5m".equals(interval.getInterval())) {
-            if (isForce) {
-                // 强制模式：直接从Binance API获取数据并保存到数据库
-                values = binanceFApi.getKlineData(symbol, interval, startTime.getTime(), endTime.getTime(), 1000);
-                if ("BTCUSDT".equals(symbol)) {
-                    btcusdt5mPMapper.batchUpsert(values);
-                } else if ("ETHUSDT".equals(symbol)) {
-                    ethusdt5mPMapper.batchUpsert(values);
-                } else {
-                    xauusdt5mPMapper.batchUpsert(values);
-                }
-            } else {
-                // 非强制模式：先查库，无数据/数据不完整则补充
-                if ("BTCUSDT".equals(symbol)) {
-                    values = btcusdt5mPMapper.selectByTimeRange(startTime.getTime(), endTime.getTime());
-                } else if ("ETHUSDT".equals(symbol)){
-                    values = ethusdt5mPMapper.selectByTimeRange(startTime.getTime(), endTime.getTime());
-                } else {
-                    values = xauusdt5mPMapper.selectByTimeRange(startTime.getTime(), endTime.getTime());
-                }
+        boolean isForce = Boolean.TRUE.equals(force);
+        KlineBaseMapper mapper = getMapper(symbol, interval);
 
-                if (values.isEmpty()) {
-                    values = binanceFApi.getKlineData(symbol, interval, startTime.getTime(), endTime.getTime(), 1000);
-                    if ("BTCUSDT".equals(symbol)) {
-                        btcusdt5mPMapper.batchUpsert(values);
-                    } else if ("ETHUSDT".equals(symbol)) {
-                        ethusdt5mPMapper.batchUpsert(values);
-                    } else {
-                        xauusdt5mPMapper.batchUpsert(values);
-                    }
-                } else {
-                    // 补充开始时间前的缺失数据
-                    KlineEntity first = values.getFirst();
-                    if (first.getOpenTime() > startTime.getTime()) {
-                        List<KlineEntity> newValues = binanceFApi.getKlineData(symbol, interval, startTime.getTime(), first.getOpenTime(), 1000);
-                        if ("BTCUSDT".equals(symbol)) {
-                            btcusdt5mPMapper.batchUpsert(newValues);
-                        } else if ("ETHUSDT".equals(symbol)) {
-                            ethusdt5mPMapper.batchUpsert(newValues);
-                        } else {
-                            xauusdt5mPMapper.batchUpsert(newValues);
-                        }
-                    }
-                    // 补充结束时间后的缺失数据
-                    KlineEntity last = values.getLast();
-                    if (last.getOpenTime() < endTime.getTime()) {
-                        List<KlineEntity> newValues = binanceFApi.getKlineData(symbol, interval, last.getOpenTime(), endTime.getTime(), 1000);
-                        if ("BTCUSDT".equals(symbol)) {
-                            btcusdt5mPMapper.batchUpsert(newValues);
-                        } else if ("ETHUSDT".equals(symbol)) {
-                            ethusdt5mPMapper.batchUpsert(newValues);
-                        } else {
-                            xauusdt5mPMapper.batchUpsert(newValues);
-                        }
-                    }
-                    // 重新查询完整数据
-                    if ("BTCUSDT".equals(symbol)) {
-                        values = btcusdt5mPMapper.selectByTimeRange(startTime.getTime(), endTime.getTime());
-                    } else if ("ETHUSDT".equals(symbol)) {
-                        values = ethusdt5mPMapper.selectByTimeRange(startTime.getTime(), endTime.getTime());
-                    } else {
-                        values = xauusdt5mPMapper.selectByTimeRange(startTime.getTime(), endTime.getTime());
-                    }
-                }
-            }
-        } else if ("1h".equals(interval.getInterval())) {
-            if (isForce) {
-                // 强制模式：直接从Binance API获取数据并保存到数据库
-                values = binanceFApi.getKlineData(symbol, interval, startTime.getTime(), endTime.getTime(), 1000);
-                if ("BTCUSDT".equals(symbol)) {
-                    btcusdt1hPMapper.batchUpsert(values);
-                } else if ("ETHUSDT".equals(symbol)) {
-                    ethusdt1hPMapper.batchUpsert(values);
-                } else {
-                    xauusdt1hPMapper.batchUpsert(values);
-                }
-            } else {
-                // 非强制模式：先查库，无数据/数据不完整则补充
-                if ("BTCUSDT".equals(symbol)) {
-                    values = btcusdt1hPMapper.selectByTimeRange(startTime.getTime(), endTime.getTime());
-                } else if ("ETHUSDT".equals(symbol)) {
-                    values = ethusdt1hPMapper.selectByTimeRange(startTime.getTime(), endTime.getTime());
-                } else {
-                    values = xauusdt1hPMapper.selectByTimeRange(startTime.getTime(), endTime.getTime());
-                }
-
-                if (values.isEmpty()) {
-                    values = binanceFApi.getKlineData(symbol, interval, startTime.getTime(), endTime.getTime(), 1000);
-                    if ("BTCUSDT".equals(symbol)) {
-                        btcusdt1hPMapper.batchUpsert(values);
-                    } else if ("ETHUSDT".equals(symbol)) {
-                        ethusdt1hPMapper.batchUpsert(values);
-                    } else {
-                        xauusdt1hPMapper.batchUpsert(values);
-                    }
-                } else {
-                    // 补充开始时间前的缺失数据
-                    KlineEntity first = values.getFirst();
-                    if (first.getOpenTime() > startTime.getTime()) {
-                        List<KlineEntity> newValues = binanceFApi.getKlineData(symbol, interval, startTime.getTime(), first.getOpenTime(), 1000);
-                        if ("BTCUSDT".equals(symbol)) {
-                            btcusdt1hPMapper.batchUpsert(newValues);
-                        } else if ("ETHUSDT".equals(symbol)) {
-                            ethusdt1hPMapper.batchUpsert(newValues);
-                        } else {
-                            xauusdt1hPMapper.batchUpsert(newValues);
-                        }
-                    }
-                    // 补充结束时间后的缺失数据
-                    KlineEntity last = values.getLast();
-                    if (last.getOpenTime() < endTime.getTime()) {
-                        List<KlineEntity> newValues = binanceFApi.getKlineData(symbol, interval, last.getOpenTime(), endTime.getTime(), 1000);
-                        if ("BTCUSDT".equals(symbol)) {
-                            btcusdt1hPMapper.batchUpsert(newValues);
-                        } else if ("ETHUSDT".equals(symbol)) {
-                            ethusdt1hPMapper.batchUpsert(newValues);
-                        } else {
-                            xauusdt1hPMapper.batchUpsert(newValues);
-                        }
-                    }
-                    // 重新查询完整数据
-                    if ("BTCUSDT".equals(symbol)) {
-                        values = btcusdt1hPMapper.selectByTimeRange(startTime.getTime(), endTime.getTime());
-                    } else if ("ETHUSDT".equals(symbol)) {
-                        values = ethusdt1hPMapper.selectByTimeRange(startTime.getTime(), endTime.getTime());
-                    } else {
-                        values = xauusdt1hPMapper.selectByTimeRange(startTime.getTime(), endTime.getTime());
-                    }
-                }
-            }
-        } else {
-            throw new IllegalArgumentException("不支持的时间间隔");
+        // 1. 强制模式：直接 API → DB → 返回
+        if (isForce) {
+            List<KlineEntity> apiData = binanceFApi.getKlineData(
+                    symbol, interval,
+                    startTime.getTime(),
+                    endTime.getTime(),
+                    1000
+            );
+            mapper.batchUpsert(apiData);
+            return apiData;
         }
 
-        return values;
+        // 2. 非强制：先查库
+        List<KlineEntity> values =
+                mapper.selectByTimeRange(startTime.getTime(), endTime.getTime());
+
+        // 3. 库里完全没数据
+        if (values.isEmpty()) {
+            List<KlineEntity> apiData = binanceFApi.getKlineData(
+                    symbol, interval,
+                    startTime.getTime(),
+                    endTime.getTime(),
+                    1000
+            );
+            mapper.batchUpsert(apiData);
+            return apiData;
+        }
+
+        // 4. 补前
+        KlineEntity first = values.getFirst();
+        if (first.getOpenTime() > startTime.getTime()) {
+            List<KlineEntity> before = binanceFApi.getKlineData(
+                    symbol, interval,
+                    startTime.getTime(),
+                    first.getOpenTime(),
+                    1000
+            );
+            mapper.batchUpsert(before);
+        }
+
+        // 5. 补后
+        KlineEntity last = values.getLast();
+        if (last.getOpenTime() < endTime.getTime()) {
+            List<KlineEntity> after = binanceFApi.getKlineData(
+                    symbol, interval,
+                    last.getOpenTime(),
+                    endTime.getTime(),
+                    1000
+            );
+            mapper.batchUpsert(after);
+        }
+
+        // 6. 重新查询完整数据
+        return mapper.selectByTimeRange(
+                startTime.getTime(),
+                endTime.getTime()
+        );
+    }
+
+    private KlineBaseMapper getMapper(String symbol, BinanceIntervalEnum interval) {
+        KlineBaseMapper mapper =
+                mapperRegistry.get(symbol + "_" + interval.getInterval());
+        if (mapper == null) {
+            throw new IllegalArgumentException("不支持的交易对或周期");
+        }
+        return mapper;
     }
 }

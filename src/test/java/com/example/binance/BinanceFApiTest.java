@@ -6,7 +6,7 @@ import cn.hutool.core.date.DateUtil;
 import com.example.binance.api.BinanceFApi;
 import com.example.binance.config.BinanceIntervalEnum;
 import com.example.binance.entity.KlineEntity;
-import com.example.binance.mapper.BTCUSDT5mPMapper;
+import com.example.binance.mapper.btcusdt.BTCUSDT5mPMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

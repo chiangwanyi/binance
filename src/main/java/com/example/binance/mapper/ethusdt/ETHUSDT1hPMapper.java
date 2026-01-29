@@ -1,6 +1,7 @@
-package com.example.binance.mapper;
+package com.example.binance.mapper.ethusdt;
 
 import com.example.binance.entity.KlineEntity;
+import com.example.binance.mapper.KlineBaseMapper;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
@@ -10,35 +11,35 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface ETHUSDT5mPMapper {
+public interface ETHUSDT1hPMapper extends KlineBaseMapper {
 
     /**
      * 根据开盘时间查询单条K线
      */
-    @Select("SELECT * FROM ethusdt_perpetual_5m_kline WHERE open_time = #{openTime}")
+    @Select("SELECT * FROM ethusdt_perpetual_1h_kline WHERE open_time = #{openTime}")
     KlineEntity selectByOpenTime(@Param("openTime") Long openTime);
 
     /**
      * 根据开盘时间删除K线数据
      */
-    @Delete("DELETE FROM ethusdt_perpetual_5m_kline WHERE open_time = #{openTime}")
+    @Delete("DELETE FROM ethusdt_perpetual_1h_kline WHERE open_time = #{openTime}")
     int deleteByOpenTime(@Param("openTime") Long openTime);
 
     /**
      * 查询所有K线数据
      */
-    @Select("SELECT * FROM ethusdt_perpetual_5m_kline ORDER BY open_time ASC")
+    @Select("SELECT * FROM ethusdt_perpetual_1h_kline ORDER BY open_time ASC")
     List<KlineEntity> selectAll();
 
     /**
      * 查询指定时间范围的K线数据
      */
-    @Select("SELECT * FROM ethusdt_perpetual_5m_kline WHERE open_time >= #{startTime} AND open_time <= #{endTime} ORDER BY open_time ASC")
+    @Select("SELECT * FROM ethusdt_perpetual_1h_kline WHERE open_time >= #{startTime} AND open_time <= #{endTime} ORDER BY open_time ASC")
     List<KlineEntity> selectByTimeRange(@Param("startTime") Long startTime, @Param("endTime") Long endTime);
 
     @Insert("""
             <script>
-                INSERT INTO ethusdt_perpetual_5m_kline (
+                INSERT INTO ethusdt_perpetual_1h_kline (
                     open_time,
                     open_price,high_price,low_price,close_price,
                     volume,close_time,quote_volume,trade_count,
