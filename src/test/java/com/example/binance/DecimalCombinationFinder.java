@@ -9,9 +9,9 @@ public class DecimalCombinationFinder {
 
     public static void main(String[] args) {
         // 示例：两位小数数组
-        double[] decimalArray = {138, 94.8, 71.9, 150, 713, 91.8, 258.8, 258.8, 218.7};
+        double[] decimalArray = {138,94.8,258.8,258.8,218.7,121,257.2,61,194.8,281.8,404.8,194.8,482.8,370.8,400.8,190.8,132.8,400.8,250.8,151.3};
         // 示例：目标两位小数
-        double target = 1026.70;
+        double target = 1394.5+3238.1;
 
         // 查找所有符合条件的组合
         findCombinations(decimalArray, target);
