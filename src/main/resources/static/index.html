@@ -240,6 +240,7 @@
                     </label>
                     <label>时间周期
                         <select v-model="interval">
+                            <option value="1m">1m</option>
                             <option value="5m">5m</option>
                             <option value="1h">1h</option>
                         </select>
@@ -1423,7 +1424,9 @@
                     try {
                         // 移动开始时间
                         if (targetTime === -1) {
-                            if (this.interval === '5m') {
+                            if (this.interval === '1m') {
+                                this.startTime = new Date(new Date(Date.parse(this.startTime) + direction * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
+                            } else if (this.interval === '5m') {
                                 this.startTime = new Date(new Date(Date.parse(this.startTime) + direction * 5 * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
                             } else if (this.interval === '1h') {
                                 this.startTime = new Date(new Date(Date.parse(this.startTime) + direction * 60 * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
@@ -1431,7 +1434,9 @@
                         }
                         // 移动结束时间
                         else if (targetTime === 1) {
-                            if (this.interval === '5m') {
+                            if (this.interval === '1m') {
+                                this.endTime = new Date(new Date(Date.parse(this.endTime) + direction * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
+                            } else if (this.interval === '5m') {
                                 this.endTime = new Date(new Date(Date.parse(this.endTime) + direction * 5 * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
                             } else if (this.interval === '1h') {
                                 this.endTime = new Date(new Date(Date.parse(this.endTime) + direction * 60 * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);

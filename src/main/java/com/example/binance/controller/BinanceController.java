@@ -8,12 +8,16 @@ import com.example.binance.config.BinanceIntervalEnum;
 import com.example.binance.entity.KlineEntity;
 import com.example.binance.mapper.*;
 import com.example.binance.mapper.btcusdt.BTCUSDT1hPMapper;
+import com.example.binance.mapper.btcusdt.BTCUSDT1mPMapper;
 import com.example.binance.mapper.btcusdt.BTCUSDT5mPMapper;
 import com.example.binance.mapper.ethusdt.ETHUSDT1hPMapper;
+import com.example.binance.mapper.ethusdt.ETHUSDT1mPMapper;
 import com.example.binance.mapper.ethusdt.ETHUSDT5mPMapper;
 import com.example.binance.mapper.xagusdt.XAGUSDT1hPMapper;
+import com.example.binance.mapper.xagusdt.XAGUSDT1mPMapper;
 import com.example.binance.mapper.xagusdt.XAGUSDT5mPMapper;
 import com.example.binance.mapper.xauusdt.XAUUSDT1hPMapper;
+import com.example.binance.mapper.xauusdt.XAUUSDT1mPMapper;
 import com.example.binance.mapper.xauusdt.XAUUSDT5mPMapper;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,17 +38,28 @@ import java.util.stream.Collectors;
 @RequestMapping("/c/binance")
 public class BinanceController {
     @Autowired
+    private BTCUSDT1mPMapper btcusdt1mPMapper;
+    @Autowired
     private BTCUSDT5mPMapper btcusdt5mPMapper;
     @Autowired
     private BTCUSDT1hPMapper btcusdt1hPMapper;
+
+    @Autowired
+    private ETHUSDT1mPMapper ethusdt1mPMapper;
     @Autowired
     private ETHUSDT5mPMapper ethusdt5mPMapper;
     @Autowired
     private ETHUSDT1hPMapper ethusdt1hPMapper;
+
+    @Autowired
+    private XAUUSDT1mPMapper xauusdt1mPMapper;
     @Autowired
     private XAUUSDT5mPMapper xauusdt5mPMapper;
     @Autowired
     private XAUUSDT1hPMapper xauusdt1hPMapper;
+
+    @Autowired
+    private XAGUSDT1mPMapper xagusdt1mPMapper;
     @Autowired
     private XAGUSDT5mPMapper xagusdt5mPMapper;
     @Autowired
@@ -57,15 +72,19 @@ public class BinanceController {
 
     @PostConstruct
     public void initMapperRegistry() {
-        mapperRegistry = Map.of(
-                "BTCUSDT_5m", btcusdt5mPMapper,
-                "BTCUSDT_1h", btcusdt1hPMapper,
-                "ETHUSDT_5m", ethusdt5mPMapper,
-                "ETHUSDT_1h", ethusdt1hPMapper,
-                "XAUUSDT_5m", xauusdt5mPMapper,
-                "XAUUSDT_1h", xauusdt1hPMapper,
-                "XAGUSDT_5m", xagusdt5mPMapper,
-                "XAGUSDT_1h", xagusdt1hPMapper
+        mapperRegistry = Map.ofEntries(
+                 Map.entry("BTCUSDT_1m", btcusdt1mPMapper),
+                 Map.entry("BTCUSDT_5m", btcusdt5mPMapper),
+                 Map.entry("BTCUSDT_1h", btcusdt1hPMapper),
+                 Map.entry("ETHUSDT_1m", ethusdt1mPMapper),
+                 Map.entry("ETHUSDT_5m", ethusdt5mPMapper),
+                 Map.entry("ETHUSDT_1h", ethusdt1hPMapper),
+                 Map.entry("XAUUSDT_1m", xauusdt1mPMapper),
+                 Map.entry("XAUUSDT_5m", xauusdt5mPMapper),
+                 Map.entry("XAUUSDT_1h", xauusdt1hPMapper),
+                 Map.entry("XAGUSDT_1m", xagusdt1mPMapper),
+                 Map.entry("XAGUSDT_5m", xagusdt5mPMapper),
+                 Map.entry("XAGUSDT_1h", xagusdt1hPMapper)
         );
     }
 
@@ -144,6 +163,10 @@ public class BinanceController {
         // ========= 5. 查询 K 线 =========
         List<KlineEntity> values;
         switch (interval) {
+            case "1m":
+                values = getKlineDataBySymbolAndInterval(
+                        symbol, BinanceIntervalEnum.M1, startUtcDate, endUtcDate, force);
+                break;
             case "5m":
                 values = getKlineDataBySymbolAndInterval(
                         symbol, BinanceIntervalEnum.M5, startUtcDate, endUtcDate, force);
