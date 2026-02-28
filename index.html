@@ -137,7 +137,10 @@
         <!-- 左侧面板 -->
         <div class="left">
             <h1>币安永续合约</h1>
-
+            <div style="display:flex;gap:4px;margin-bottom:12px;">
+                <button @click="setTheme('dark')" :class="{active: theme==='dark'}">🌙 夜间</button>
+                <button @click="setTheme('light')" :class="{active: theme==='light'}">☀️ 日间</button>
+            </div>
             <div class="card">
                 <h3>绘图工具</h3>
                 <label>基础工具</label>
@@ -302,6 +305,8 @@
                     chart: null,
                     candleSeries: null,
 
+                    theme: localStorage.getItem('chart_theme') || 'dark',
+
                     symbol: 'BTCUSDT',
 
                     // 日期
@@ -389,6 +394,7 @@
                 }
                 // 初始化图表
                 this.initChart();
+                this.applyTheme();
                 // 初始化十字光标监听
                 this.initCrosshairListener();
                 // 窗口大小监听
@@ -434,6 +440,83 @@
                 },
             },
             methods: {
+                setTheme(theme) {
+                    this.theme = theme;
+                    localStorage.setItem('chart_theme', theme);
+
+                    this.applyTheme();
+                },
+
+                applyTheme() {
+
+                    const isDark = this.theme === 'dark';
+
+                    // body
+                    document.body.style.background = isDark ? '#0f172a' : '#ffffff';
+                    document.body.style.color = isDark ? '#e5e7eb' : '#111827';
+
+                    // 左侧面板
+                    const left = document.querySelector('.left');
+                    if (left) {
+                        left.style.background = isDark ? '#020617' : '#f3f4f6';
+                        left.style.borderRightColor = isDark ? '#1e293b' : '#d1d5db';
+                    }
+
+                    // card
+                    document.querySelectorAll('.card').forEach(el => {
+                        el.style.background = isDark
+                            ? 'rgba(2,6,23,0.85)'
+                            : '#ffffff';
+
+                        el.style.borderColor = isDark
+                            ? '#1e293b'
+                            : '#d1d5db';
+                    });
+
+                    // tooltip
+                    const tooltip = this.$refs.tooltipEl;
+                    if (tooltip) {
+                        tooltip.style.background = isDark ? '#020617' : '#ffffff';
+                        tooltip.style.borderColor = isDark ? '#1e293b' : '#d1d5db';
+                    }
+
+                    // chart
+                    if (this.chart) {
+
+                        this.chart.applyOptions({
+
+                            layout: {
+                                background: {
+                                    color: isDark ? '#0f172a' : '#ffffff'
+                                },
+                                textColor: isDark ? '#d1d5db' : '#111827'
+                            },
+
+                            grid: {
+                                vertLines: {
+                                    color: isDark ? '#1f2937' : '#e5e7eb'
+                                },
+                                horzLines: {
+                                    color: isDark ? '#1f2937' : '#e5e7eb'
+                                }
+                            },
+
+                            crosshair: {
+                                vertLine: {
+                                    color: isDark ? '#6b7280' : '#9ca3af'
+                                },
+                                horzLine: {
+                                    color: isDark ? '#6b7280' : '#9ca3af'
+                                }
+                            }
+
+                        });
+
+                    }
+
+                    // 重新渲染 overlay
+                    this.renderOverlay();
+                },
                 calcContractSim() { },
                 saveCache() {
                     localStorage.setItem(
@@ -469,8 +552,14 @@
 
                     // 创建图表实例
                     this.chart = LightweightCharts.createChart(this.$refs.chartEl, {
-                        layout: { background: { color: '#0f0f0f' }, textColor: '#b2b2b2' },
-                        grid: { vertLines: { color: '#1c1c1c' }, horzLines: { color: '#1c1c1c' } },
+                        layout: {
+                            background: { color: this.theme === 'dark' ? '#0f172a' : '#ffffff' },
+                            textColor: this.theme === 'dark' ? '#d1d5db' : '#111827'
+                        },
+                        grid: {
+                            vertLines: { color: this.theme === 'dark' ? '#1f2937' : '#e5e7eb' },
+                            horzLines: { color: this.theme === 'dark' ? '#1f2937' : '#e5e7eb' }
+                        },
                         timeScale: {
                             timeVisible: true,
                             secondsVisible: false,
@@ -492,19 +581,19 @@
 
                     // 创建K线系列
                     this.candleSeries = this.chart.addSeries(LightweightCharts.CandlestickSeries, {
-                        upColor: '#089981',
-                        downColor: '#f23645',
-                        borderUpColor: '#089981',
-                        borderDownColor: '#f23645',
-                        wickUpColor: '#089981',
-                        wickDownColor: '#f23645'
+                        upColor: '#2ebd85',
+                        downColor: '#f6465d',
+                        borderUpColor: '#2ebd85',
+                        borderDownColor: '#f6465d',
+                        wickUpColor: '#2ebd85',
+                        wickDownColor: '#f6465d'
                     });
 
                     // 创建EMA20系列
                     this.ema20Series = this.chart.addSeries(
                         LightweightCharts.LineSeries,
                         {
-                            color: '#ffeb3b', // 蓝色，略浅
+                            color: '#2962ff', // 蓝色，略浅
                             lineWidth: 1,
                         }
                     );
