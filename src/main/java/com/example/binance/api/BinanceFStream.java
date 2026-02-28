@@ -67,6 +67,7 @@ public class BinanceFStream {
                             k.getStr("V"),
                             k.getStr("Q")
                     );
+                    log.info("Binance WS message: {}", kline);
                     btcusdt5mPMapper.batchUpsert(Arrays.asList(kline));
                 }
 
