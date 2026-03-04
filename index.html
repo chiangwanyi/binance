@@ -378,6 +378,21 @@
                 };
             },
             mounted() {
+                // === 0. 优先从 URL 参数恢复 ===
+                const params = new URLSearchParams(window.location.search);
+
+                const urlSymbol = params.get('symbol');
+                const urlStart = params.get('start');
+                const urlEnd = params.get('end');
+                const urlInterval = params.get('interval');
+                const urlLocation = params.get('location');
+
+                if (urlSymbol) this.symbol = urlSymbol;
+                if (urlStart) this.startTime = urlStart;
+                if (urlEnd) this.endTime = urlEnd;
+                if (urlInterval) this.interval = urlInterval;
+                if (urlLocation) this.location = urlLocation;
+
                 // === 1. 从浏览器缓存中恢复时间 ===
                 const cache = localStorage.getItem(STORAGE_KEY);
                 if (cache) {
@@ -401,6 +416,8 @@
                 window.addEventListener('resize', this.handleWindowResize);
                 // 初始化Overlay
                 this.initOverlay();
+
+                this.updateUrlParams();
             },
             unmounted() {
                 window.removeEventListener('resize', this.handleWindowResize);
@@ -413,33 +430,41 @@
                 }
             },
             watch: {
-                startTime: {
-                    handler() {
-                        this.saveCache();
-                    }
+                startTime() {
+                    this.saveCache();
+                    this.updateUrlParams();
                 },
-                endTime: {
-                    handler() {
-                        this.saveCache();
-                    }
+                endTime() {
+                    this.saveCache();
+                    this.updateUrlParams();
                 },
-                interval: {
-                    handler() {
-                        this.saveCache();
-                    }
+                interval() {
+                    this.saveCache();
+                    this.updateUrlParams();
                 },
-                location: {
-                    handler() {
-                        this.saveCache();
-                    }
+                location() {
+                    this.saveCache();
+                    this.updateUrlParams();
                 },
-                symbol: {
-                    handler() {
-                        this.saveCache();
-                    }
-                },
+                symbol() {
+                    this.saveCache();
+                    this.updateUrlParams();
+                }
             },
             methods: {
+                updateUrlParams() {
+                    const params = new URLSearchParams();
+
+                    params.set('symbol', this.symbol);
+                    params.set('start', this.startTime);
+                    params.set('end', this.endTime);
+                    params.set('interval', this.interval);
+                    params.set('location', this.location);
+
+                    const newUrl = window.location.pathname + '?' + params.toString();
+                    window.history.replaceState({}, '', newUrl);
+                },
+
                 setTheme(theme) {
                     this.theme = theme;
                     localStorage.setItem('chart_theme', theme);
