@@ -140,6 +140,8 @@
             <div style="display:flex;gap:4px;margin-bottom:12px;">
                 <button @click="setTheme('dark')" :class="{active: theme==='dark'}">🌙 夜间</button>
                 <button @click="setTheme('light')" :class="{active: theme==='light'}">☀️ 日间</button>
+            <!-- 分享按钮 -->
+                <button @click="shareChart()">🔗 分享</button>
             </div>
             <div class="card">
                 <h3>绘图工具</h3>
@@ -380,49 +382,44 @@
             mounted() {
                 // === 0. 优先从 URL 参数恢复 ===
                 const params = new URLSearchParams(window.location.search);
+                const sid = params.get('sid');
 
-                const urlSymbol = params.get('symbol');
-                const urlStart = params.get('start');
-                const urlEnd = params.get('end');
-                const urlInterval = params.get('interval');
-                const urlLocation = params.get('location');
+                if (sid) {
+                    fetch(`${this.apiBaseUrl}/api/chart/${sid}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            let value = JSON.parse(data.data.content);
+                            this.symbol =value.symbol;
+                            this.startTime =value.startTime;
+                            this.endTime =value.endTime;
+                            this.interval =value.interval;
+                            this.location =value.location;
 
-                // === 恢复绘图数据 ===
-                const drawParam = params.get('draw');
+                            this.trendLines =value.trendLines || [];
+                            this.rects =value.rects || [];
+                            this.rrTools =value.rrTools || [];
+                            this.mmTools =value.mmTools || [];
 
-                if (drawParam) {
-                    try {
-                        const json = decodeURIComponent(atob(drawParam));
-                        const drawData = JSON.parse(json);
+                            this.saveCache();
+                            this.$nextTick(() => {
+                                this.renderOverlay();
+                            });
+                        });
+                } else {
+                    // === 1. 从浏览器缓存中恢复时间 ===
+                    const cache = localStorage.getItem(STORAGE_KEY);
+                    if (cache) {
+                        try {
+                            const { startTime, endTime, interval, location, symbol } = JSON.parse(cache);
+                            if (startTime) this.startTime = startTime;
+                            if (endTime) this.endTime = endTime;
+                            if (interval) this.interval = interval;
+                            if (location) this.location = location;
+                            if (symbol) this.symbol = symbol;
 
-                        this.trendLines = drawData.trendLines || [];
-                        this.rects = drawData.rects || [];
-                        this.rrTools = drawData.rrTools || [];
-                        this.mmTools = drawData.mmTools || [];
-
-                    } catch (e) {
-                        console.warn('绘图数据恢复失败');
-                    }
-                }
-
-                if (urlSymbol) this.symbol = urlSymbol;
-                if (urlStart) this.startTime = urlStart;
-                if (urlEnd) this.endTime = urlEnd;
-                if (urlInterval) this.interval = urlInterval;
-                if (urlLocation) this.location = urlLocation;
-
-                // === 1. 从浏览器缓存中恢复时间 ===
-                const cache = localStorage.getItem(STORAGE_KEY);
-                if (cache) {
-                    try {
-                        const { startTime, endTime, interval, location, symbol } = JSON.parse(cache);
-                        if (startTime) this.startTime = startTime;
-                        if (endTime) this.endTime = endTime;
-                        if (interval) this.interval = interval;
-                        if (location) this.location = location;
-                        if (symbol) this.symbol = symbol;
-                    } catch (e) {
-                        console.warn('时间缓存解析失败，已忽略');
+                        } catch (e) {
+                            console.warn('时间缓存解析失败，已忽略');
+                        }
                     }
                 }
                 // 初始化图表
@@ -434,10 +431,7 @@
                 window.addEventListener('resize', this.handleWindowResize);
                 // 初始化Overlay
                 this.initOverlay();
-                this.updateUrlParams();
-                this.$nextTick(() => {
-                    this.renderOverlay();
-                });
+
             },
             unmounted() {
                 window.removeEventListener('resize', this.handleWindowResize);
@@ -452,54 +446,77 @@
             watch: {
                 startTime() {
                     this.saveCache();
-                    this.updateUrlParams();
                 },
                 endTime() {
                     this.saveCache();
-                    this.updateUrlParams();
                 },
                 interval() {
                     this.saveCache();
-                    this.updateUrlParams();
                 },
                 location() {
                     this.saveCache();
-                    this.updateUrlParams();
                 },
                 symbol() {
                     this.saveCache();
-                    this.updateUrlParams();
                 }
             },
             methods: {
-                updateUrlParams() {
-                    const params = new URLSearchParams();
-
-                    params.set('symbol', this.symbol);
-                    params.set('start', this.startTime);
-                    params.set('end', this.endTime);
-                    params.set('interval', this.interval);
-                    params.set('location', this.location);
-
-                    // === 序列化绘图数据 ===
-                    const drawData = {
+                async shareChart() {
+                    const state = {
+                        symbol: this.symbol,
+                        startTime: this.startTime,
+                        endTime: this.endTime,
+                        interval: this.interval,
+                        location: this.location,
                         trendLines: this.trendLines,
                         rects: this.rects,
                         rrTools: this.rrTools,
                         mmTools: this.mmTools
                     };
-
-                    try {
-                        const json = JSON.stringify(drawData);
-                        const encoded = btoa(encodeURIComponent(json));
-                        params.set('draw', encoded);
-                    } catch (e) {
-                        console.warn('绘图数据序列化失败');
-                    }
-
-                    const newUrl = window.location.pathname + '?' + params.toString();
+                    const response = await fetch(
+                        `${this.apiBaseUrl}/api/chart`,
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(state)
+                        }
+                    );
+                    const result = await response.json();
+                    const shareUrl = `${window.location.origin}${window.location.pathname}?sid=${result.msg}`;
+                    await navigator.clipboard.writeText(shareUrl);
+                    const newUrl = window.location.pathname + '?sid=' + result.msg;
                     window.history.replaceState({}, '', newUrl);
+                    alert("分享链接已复制:\n" + shareUrl);
                 },
+
+                // updateUrlParams() {
+                //     const params = new URLSearchParams();
+                //
+                //     params.set('symbol', this.symbol);
+                //     params.set('start', this.startTime);
+                //     params.set('end', this.endTime);
+                //     params.set('interval', this.interval);
+                //     params.set('location', this.location);
+                //
+                //     // === 序列化绘图数据 ===
+                //     const drawData = {
+                //         trendLines: this.trendLines,
+                //         rects: this.rects,
+                //         rrTools: this.rrTools,
+                //         mmTools: this.mmTools
+                //     };
+                //
+                //     try {
+                //         const json = JSON.stringify(drawData);
+                //         const encoded = btoa(encodeURIComponent(json));
+                //         params.set('draw', encoded);
+                //     } catch (e) {
+                //         console.warn('绘图数据序列化失败');
+                //     }
+                //
+                //     const newUrl = window.location.pathname + '?' + params.toString();
+                //     window.history.replaceState({}, '', newUrl);
+                // },
 
                 setTheme(theme) {
                     this.theme = theme;
@@ -797,7 +814,7 @@
 
                     this.renderOverlay();
                     this.showOperateMsg('已清除所有绘图元素', true);
-                    this.updateUrlParams();
+                    // this.updateUrlParams();
                 },
                 /**
                  * 调整Overlay大小
@@ -1408,7 +1425,7 @@
                         if (this.rectTemp.t1 !== this.rectTemp.t2 && this.rectTemp.p1 !== this.rectTemp.p2) {
                             this.rectTemp.color = this.activeRectColor;
                             this.rects.push({ ...this.rectTemp });
-                            this.updateUrlParams();
+                            // this.updateUrlParams();
                         }
                         this.rectTemp = null;
                         this.renderOverlay();
@@ -1423,7 +1440,7 @@
                         if (this.rrTemp.entryTime !== this.rrTemp.stopTime &&
                             Math.abs(this.rrTemp.entryPrice - this.rrTemp.stopPrice) > 0) {
                             this.rrTools.push({ ...this.rrTemp });
-                            this.updateUrlParams();
+                            // this.updateUrlParams();
                             this.showOperateMsg('盈亏比工具绘制完成，已自动生成1/2/3倍目标位', true);
                         }
                         this.rrTemp = null;
@@ -1439,7 +1456,7 @@
                         if (this.mmTemp.entryTime !== this.mmTemp.stopTime &&
                             Math.abs(this.mmTemp.entryPrice - this.mmTemp.stopPrice) > 0) {
                             this.mmTools.push({ ...this.mmTemp });
-                            this.updateUrlParams();
+                            // this.updateUrlParams();
                             this.showOperateMsg('盈亏比工具绘制完成，已自动生成1/2/3倍目标位', true);
                         }
                         this.mmTemp = null;
@@ -1465,7 +1482,7 @@
                             t2: time,
                             p2: price
                         });
-                        this.updateUrlParams();
+                        // this.updateUrlParams();
                         this.overlayTempPoint = null;
                         this.renderOverlay();
                     }

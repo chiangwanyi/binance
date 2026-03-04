@@ -1,3 +1,10 @@
+-- 新建图表快照表 --
+CREATE TABLE IF NOT EXISTS chart_snapshot (
+    id TEXT PRIMARY KEY,
+    content TEXT NOT NULL,
+    create_time BIGINT NOT NULL
+);
+
 -- 新建 BTCUSDT 永续合约1m K线表
 CREATE TABLE IF NOT EXISTS btcusdt_perpetual_1m_kline (
     open_time BIGINT PRIMARY KEY,
