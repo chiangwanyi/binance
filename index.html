@@ -387,6 +387,24 @@
                 const urlInterval = params.get('interval');
                 const urlLocation = params.get('location');
 
+                // === 恢复绘图数据 ===
+                const drawParam = params.get('draw');
+
+                if (drawParam) {
+                    try {
+                        const json = decodeURIComponent(atob(drawParam));
+                        const drawData = JSON.parse(json);
+
+                        this.trendLines = drawData.trendLines || [];
+                        this.rects = drawData.rects || [];
+                        this.rrTools = drawData.rrTools || [];
+                        this.mmTools = drawData.mmTools || [];
+
+                    } catch (e) {
+                        console.warn('绘图数据恢复失败');
+                    }
+                }
+
                 if (urlSymbol) this.symbol = urlSymbol;
                 if (urlStart) this.startTime = urlStart;
                 if (urlEnd) this.endTime = urlEnd;
@@ -416,8 +434,10 @@
                 window.addEventListener('resize', this.handleWindowResize);
                 // 初始化Overlay
                 this.initOverlay();
-
                 this.updateUrlParams();
+                this.$nextTick(() => {
+                    this.renderOverlay();
+                });
             },
             unmounted() {
                 window.removeEventListener('resize', this.handleWindowResize);
@@ -460,6 +480,22 @@
                     params.set('end', this.endTime);
                     params.set('interval', this.interval);
                     params.set('location', this.location);
+
+                    // === 序列化绘图数据 ===
+                    const drawData = {
+                        trendLines: this.trendLines,
+                        rects: this.rects,
+                        rrTools: this.rrTools,
+                        mmTools: this.mmTools
+                    };
+
+                    try {
+                        const json = JSON.stringify(drawData);
+                        const encoded = btoa(encodeURIComponent(json));
+                        params.set('draw', encoded);
+                    } catch (e) {
+                        console.warn('绘图数据序列化失败');
+                    }
 
                     const newUrl = window.location.pathname + '?' + params.toString();
                     window.history.replaceState({}, '', newUrl);
@@ -761,6 +797,7 @@
 
                     this.renderOverlay();
                     this.showOperateMsg('已清除所有绘图元素', true);
+                    this.updateUrlParams();
                 },
                 /**
                  * 调整Overlay大小
@@ -1371,6 +1408,7 @@
                         if (this.rectTemp.t1 !== this.rectTemp.t2 && this.rectTemp.p1 !== this.rectTemp.p2) {
                             this.rectTemp.color = this.activeRectColor;
                             this.rects.push({ ...this.rectTemp });
+                            this.updateUrlParams();
                         }
                         this.rectTemp = null;
                         this.renderOverlay();
@@ -1385,6 +1423,7 @@
                         if (this.rrTemp.entryTime !== this.rrTemp.stopTime &&
                             Math.abs(this.rrTemp.entryPrice - this.rrTemp.stopPrice) > 0) {
                             this.rrTools.push({ ...this.rrTemp });
+                            this.updateUrlParams();
                             this.showOperateMsg('盈亏比工具绘制完成，已自动生成1/2/3倍目标位', true);
                         }
                         this.rrTemp = null;
@@ -1400,6 +1439,7 @@
                         if (this.mmTemp.entryTime !== this.mmTemp.stopTime &&
                             Math.abs(this.mmTemp.entryPrice - this.mmTemp.stopPrice) > 0) {
                             this.mmTools.push({ ...this.mmTemp });
+                            this.updateUrlParams();
                             this.showOperateMsg('盈亏比工具绘制完成，已自动生成1/2/3倍目标位', true);
                         }
                         this.mmTemp = null;
@@ -1425,6 +1465,7 @@
                             t2: time,
                             p2: price
                         });
+                        this.updateUrlParams();
                         this.overlayTempPoint = null;
                         this.renderOverlay();
                     }
