@@ -28,10 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.*;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.time.temporal.ChronoField;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -69,6 +67,8 @@ public class BinanceController {
     private BinanceFApi binanceFApi;
 
     private Map<String, KlineBaseMapper> mapperRegistry;
+
+    private final String excludeDates = "01-01";
 
     @PostConstruct
     public void initMapperRegistry() {
@@ -187,6 +187,19 @@ public class BinanceController {
             final int END_TOTAL_MIN = 16 * 60 + 10;
 
             ZoneId etZone = ZoneId.of("America/New_York");
+            // 解析需要过滤的日期（MM-dd格式）
+            Set<String> excludeDateSet = new HashSet<>();
+            if (StrUtil.isNotBlank(excludeDates)) {
+                // 拆分多个日期，去重
+                String[] dateArray = excludeDates.split(",");
+                for (String date : dateArray) {
+                    String trimDate = date.trim();
+                    // 简单校验日期格式（MM-dd）
+                    if (trimDate.matches("^\\d{2}-\\d{2}$")) {
+                        excludeDateSet.add(trimDate);
+                    }
+                }
+            }
 
             values = values.stream()
                     .filter(v -> {
@@ -194,11 +207,21 @@ public class BinanceController {
                         ZonedDateTime etTime = Instant.ofEpochMilli(v.getOpenTime())
                                 .atZone(etZone);
 
+                        // 1. 过滤周末
                         DayOfWeek day = etTime.getDayOfWeek();
                         if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY) {
                             return false;
                         }
 
+                        // 2. 过滤指定日期（MM-dd）
+                        String mmDd = String.format("%02d-%02d",
+                                etTime.get(ChronoField.MONTH_OF_YEAR),
+                                etTime.get(ChronoField.DAY_OF_MONTH));
+                        if (excludeDateSet.contains(mmDd)) {
+                            return false;
+                        }
+
+                        // 3. 过滤交易时段外的K线
                         int totalMin = etTime.getHour() * 60 + etTime.getMinute();
                         return totalMin >= START_TOTAL_MIN && totalMin <= END_TOTAL_MIN;
                     })

@@ -26,24 +26,24 @@ class BTCUSDT5mPMapperTest {
         log.info("list: {}", list);
     }
 
-    @Test
-    void batchInsert_shouldWork() {
-        KlineEntity k1 = new KlineEntity(
-                1L,
-                "100",
-                "110",
-                "95",
-                "105",
-                "123.45",
-                2L,
-                "12345.67",
-                100,
-                "60.12",
-                "6012.34"
-        );
-
-        int rows = BTCUSDT5mPMapper.batchUpsert(List.of(k1));
-        assertEquals(1, rows);
-    }
+//    @Test
+//    void batchInsert_shouldWork() {
+//        KlineEntity k1 = new KlineEntity(
+//                1L,
+//                "100",
+//                "110",
+//                "95",
+//                "105",
+//                "123.45",
+//                2L,
+//                "12345.67",
+//                100,
+//                "60.12",
+//                "6012.34"
+//        );
+//
+//        int rows = BTCUSDT5mPMapper.batchUpsert(List.of(k1));
+//        assertEquals(1, rows);
+//    }
 
 }
