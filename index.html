@@ -165,39 +165,6 @@
                 </div>
             </div>
             <div class="card">
-                <h3>价格线管理</h3>
-                <!-- 添加价格线表单 -->
-                <label>价格线
-                    <input type="text" v-model="newPriceLine.title" placeholder="例如：压力位、支撑位">
-                    <input type="number" step="0.1" v-model="newPriceLine.price" placeholder="点击图表自动填充或手动输入">
-                    <input type="color" v-model="newPriceLine.color" value="#a7eec0">
-                    <div style="display: flex;flex-direction: row;gap: 4px;">
-                        <button style="color: #a7eec0" @click="newPriceLine.color = '#a7eec0'">绿色</button>
-                        <button style="color: #f46060" @click="newPriceLine.color = '#f46060'">红色</button>
-                    </div>
-                </label>
-                <button @click="this.addPriceLine">添加价格线</button>
-
-                <!-- 已添加价格线列表 -->
-                <div style="margin-top: 12px; max-height: 200px; overflow-y: auto;">
-                    <div v-for="(line, index) in priceLines" :key="index"
-                        style="display: flex; gap: 4px; margin-bottom: 6px; align-items: center; padding: 4px; border: 1px solid #1e293b; border-radius: 4px;">
-                        <div style="flex: 1;">
-                            <div style="font-size: 11px; color: #94a3b8;">{{ line.title }}</div>
-                            <div style="font-size: 11px;">{{ line.price }} <span :style="{color: line.color}">■</span>
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 2px;">
-                            <button @click="this.togglePriceLineVisible(index)" :title="line.visible ? '隐藏' : '显示'">
-                                {{ line.visible ? '隐藏' : '显示' }}
-                            </button>
-                            <button @click="this.editPriceLine(index)">编辑</button>
-                            <button @click="this.deletePriceLine(index)" style="background: #ef4444;">删除</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="card">
                 <h3>K线加载</h3>
                 <div style="display: flex;flex-direction: column;">
                     <label>标的
@@ -240,7 +207,39 @@
                     <button @click="loadKlineByDateRange(1, 1)">结束后移</button>
                 </div>
             </div>
+            <div class="card">
+                <h3>价格线管理</h3>
+                <!-- 添加价格线表单 -->
+                <label>价格线
+                    <input type="text" v-model="newPriceLine.title" placeholder="例如：压力位、支撑位">
+                    <input type="number" step="0.1" v-model="newPriceLine.price" placeholder="点击图表自动填充或手动输入">
+                    <input type="color" v-model="newPriceLine.color" value="#a7eec0">
+                    <div style="display: flex;flex-direction: row;gap: 4px;">
+                        <button style="color: #a7eec0" @click="newPriceLine.color = '#a7eec0'">绿色</button>
+                        <button style="color: #f46060" @click="newPriceLine.color = '#f46060'">红色</button>
+                    </div>
+                </label>
+                <button @click="this.addPriceLine">添加价格线</button>
 
+                <!-- 已添加价格线列表 -->
+                <div style="margin-top: 12px; max-height: 200px; overflow-y: auto;">
+                    <div v-for="(line, index) in priceLines" :key="index"
+                        style="display: flex; gap: 4px; margin-bottom: 6px; align-items: center; padding: 4px; border: 1px solid #1e293b; border-radius: 4px;">
+                        <div style="flex: 1;">
+                            <div style="font-size: 11px; color: #94a3b8;">{{ line.title }}</div>
+                            <div style="font-size: 11px;">{{ line.price }} <span :style="{color: line.color}">■</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 2px;">
+                            <button @click="this.togglePriceLineVisible(index)" :title="line.visible ? '隐藏' : '显示'">
+                                {{ line.visible ? '隐藏' : '显示' }}
+                            </button>
+                            <button @click="this.editPriceLine(index)">编辑</button>
+                            <button @click="this.deletePriceLine(index)" style="background: #ef4444;">删除</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- 右侧图表 -->
