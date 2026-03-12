@@ -68,7 +68,7 @@ public class BinanceController {
 
     private Map<String, KlineBaseMapper> mapperRegistry;
 
-    private final String excludeDates = "01-01";
+    private final String excludeDates = "01-01,12-25";
 
     @PostConstruct
     public void initMapperRegistry() {
