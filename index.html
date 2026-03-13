@@ -218,13 +218,13 @@
                 <label>价格线
                     <input type="text" v-model="newPriceLine.title" placeholder="例如：压力位、支撑位">
                     <input type="number" step="0.1" v-model="newPriceLine.price" placeholder="点击图表自动填充或手动输入">
-                    <input type="color" v-model="newPriceLine.color" value="#a7eec0">
+                    <input type="color" v-model="newPriceLine.color" value="#a7eec0" style="display: none;">
                     <div style="display: flex;flex-direction: row;gap: 4px;">
-                        <button style="color: #a7eec0" @click="newPriceLine.color = '#a7eec0'">绿色</button>
-                        <button style="color: #f46060" @click="newPriceLine.color = '#f46060'">红色</button>
+                        <button style="color: #a7eec0" @click="newPriceLine.color = '#a7eec0';this.addPriceLine();">绿色</button>
+                        <button style="color: #f46060" @click="newPriceLine.color = '#f46060';this.addPriceLine();">红色</button>
                     </div>
                 </label>
-                <button @click="this.addPriceLine">添加价格线</button>
+                <!-- <button @click="this.addPriceLine">添加价格线</button> -->
 
                 <!-- 已添加价格线列表 -->
                 <div style="margin-top: 12px; max-height: 200px; overflow-y: auto;">
@@ -337,24 +337,6 @@
                     },
                     priceLines: [], // 已添加的价格线列表，每项结构：{title, price, color, visible, series}
                     editingPriceLineIndex: -1, // 正在编辑的价格线索引（-1表示未编辑）
-
-                    // 合约模拟器
-                    isSim: false,
-                    positionSide: 'long', // long | short
-                    // 下单数量
-                    simQty: 0.01,
-                    // 杠杆
-                    simLeverage: 60,
-                    // 开仓价
-                    simEntryPrice: null,
-                    // 初始保证金
-                    simMargin: null,
-                    // 爆仓价（强平价格）
-                    simLiqPrice: null,
-                    // 挂单手续费率
-                    feeMaker: 0.0002,
-                    // 吃单手续费率
-                    feeTaker: 0.0006,
 
                     // API基础地址
                     apiBaseUrl: 'http://localhost:8765'
@@ -470,35 +452,6 @@
                     alert("分享链接已复制:\n" + shareUrl);
                 },
 
-                // updateUrlParams() {
-                //     const params = new URLSearchParams();
-                //
-                //     params.set('symbol', this.symbol);
-                //     params.set('start', this.startTime);
-                //     params.set('end', this.endTime);
-                //     params.set('interval', this.interval);
-                //     params.set('location', this.location);
-                //
-                //     // === 序列化绘图数据 ===
-                //     const drawData = {
-                //         trendLines: this.trendLines,
-                //         rects: this.rects,
-                //         rrTools: this.rrTools,
-                //         mmTools: this.mmTools
-                //     };
-                //
-                //     try {
-                //         const json = JSON.stringify(drawData);
-                //         const encoded = btoa(encodeURIComponent(json));
-                //         params.set('draw', encoded);
-                //     } catch (e) {
-                //         console.warn('绘图数据序列化失败');
-                //     }
-                //
-                //     const newUrl = window.location.pathname + '?' + params.toString();
-                //     window.history.replaceState({}, '', newUrl);
-                // },
-
                 setTheme(theme) {
                     this.theme = theme;
                     localStorage.setItem('chart_theme', theme);
@@ -543,14 +496,12 @@
                     if (this.chart) {
 
                         this.chart.applyOptions({
-
                             layout: {
                                 background: {
                                     color: isDark ? '#0f172a' : '#ffffff'
                                 },
                                 textColor: isDark ? '#d1d5db' : '#111827'
                             },
-
                             grid: {
                                 vertLines: {
                                     color: isDark ? '#1f2937' : '#e5e7eb'
@@ -559,7 +510,6 @@
                                     color: isDark ? '#1f2937' : '#e5e7eb'
                                 }
                             },
-
                             crosshair: {
                                 vertLine: {
                                     color: isDark ? '#6b7280' : '#9ca3af'
@@ -568,7 +518,6 @@
                                     color: isDark ? '#6b7280' : '#9ca3af'
                                 }
                             }
-
                         });
 
                     }
@@ -576,7 +525,6 @@
                     // 重新渲染 overlay
                     this.renderOverlay();
                 },
-                calcContractSim() { },
                 saveCache() {
                     localStorage.setItem(
                         STORAGE_KEY,
