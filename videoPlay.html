@@ -18,6 +18,8 @@
 <div class="form-box">
     <input type="text" id="startTime" value="2026-03-13 10:00:00" placeholder="开始时间：YYYY-MM-DD HH:mm:ss">
     <input type="number" id="duration" value="60" placeholder="时长（秒）">
+    <!--  ChannelId  -->
+    <input type="number" id="channelId" value="0" placeholder="通道ID">
     <button onclick="playVideo()">播放视频</button>
     <button onclick="downloadVideo()">下载视频</button>
 </div>
@@ -34,8 +36,9 @@
     function playVideo() {
         const startTime = document.getElementById("startTime").value;
         const duration = document.getElementById("duration").value;
+        const channelId = document.getElementById("channelId").value;
 
-        const url = `${baseUrl}?start=${encodeURIComponent(startTime)}&duration=${duration}`;
+        const url = `${baseUrl}?start=${encodeURIComponent(startTime)}&duration=${duration}&channelId=${channelId}`;
         document.getElementById("videoPlayer").src = url;
     }
 
@@ -43,8 +46,9 @@
     function downloadVideo() {
         const startTime = document.getElementById("startTime").value;
         const duration = document.getElementById("duration").value;
+        const channelId = document.getElementById("channelId").value;
 
-        const url = `${baseUrl}?start=${encodeURIComponent(startTime)}&duration=${duration}`;
+        const url = `${baseUrl}?start=${encodeURIComponent(startTime)}&duration=${duration}&channelId=${channelId}`;
         const a = document.createElement("a");
         a.href = url;
         a.download = "";

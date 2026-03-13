@@ -32,6 +32,7 @@ public class DahuaController {
     @GetMapping("/download")
     public void download(@RequestParam("start") String startTimeStr,
                            @RequestParam("duration") Integer duration,
+                           @RequestParam("channelId") Integer channelId,
                            HttpServletResponse response) throws Exception {
         // startTimeStr 格式为 YYYY-MM-DD HH:mm:ss
         // duration 秒
@@ -65,12 +66,12 @@ public class DahuaController {
         end.dwMinute = endCal.get(Calendar.MINUTE);
         end.dwSecond = endCal.get(Calendar.SECOND);
 
-        // 类似 D:\Data\Java\binance\20260311_210000__20260311_210030.mp4
         String videoFilePath = service.download(
                 "192.168.1.108",
                 37777,
                 "admin",
                 "drx123456",
+                channelId,
                 start,
                 end
         );

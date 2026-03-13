@@ -29,6 +29,7 @@ public class DahuaDownloadService {
             int port,
             String user,
             String password,
+            int channelId,
             NET_TIME start,
             NET_TIME end) throws Exception {
 
@@ -65,7 +66,7 @@ public class DahuaDownloadService {
 
         LLong downloadHandle = netsdk.CLIENT_DownloadByTimeEx2(
                 loginHandle,
-                0,
+                channelId,
                 0,
                 start,
                 end,
@@ -90,8 +91,10 @@ public class DahuaDownloadService {
 
         ProcessBuilder pb = new ProcessBuilder(
                 "ffmpeg",
+                "-y",
                 "-i", "test.dav",
-                "-c", "copy",
+                "-c:v", "copy",
+                "-c:a", "aac",
                 "-fflags", "+genpts",
                 "-movflags", "+faststart",
                 outputFile
