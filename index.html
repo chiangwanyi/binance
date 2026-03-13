@@ -661,25 +661,17 @@
                     if (e.key === 'e' || e.key === 'E') {
                         const time = this.chart.timeScale().coordinateToTime(this.currentMouseX);
                         const price = this.candleSeries.coordinateToPrice(this.currentMouseY);
-
                         for (let i = 0; i < this.textBoxes.length; i++) {
-
                             const tb = this.textBoxes[i];
-
                             const minT = Math.min(tb.t1, tb.t2);
                             const maxT = Math.max(tb.t1, tb.t2);
-
                             const minP = Math.min(tb.p1, tb.p2);
                             const maxP = Math.max(tb.p1, tb.p2);
-
                             if (time >= minT && time <= maxT && price >= minP && price <= maxP) {
-
                                 const txt = prompt("编辑文本", tb.text);
-
                                 if (txt !== null) {
                                     tb.text = txt;
                                 }
-
                                 this.activeTool = 'cursor';
                                 this.renderOverlay();
                                 return;
@@ -722,41 +714,30 @@
 
                     if (this.activeTool === 'trendline') {
                         // ===== 删除趋势线（鼠标到线段最短距离）=====
-
                         const mouseX = this.currentMouseX;
                         const mouseY = this.currentMouseY;
-
                         let minDist = Infinity;
                         let deleteIndex = -1;
-
                         for (let i = 0; i < this.trendLines.length; i++) {
-
                             const line = this.trendLines[i];
-
                             // 转换为屏幕坐标
                             const x1 = this.chart.timeScale().timeToCoordinate(line.t1);
                             const y1 = this.candleSeries.priceToCoordinate(line.p1);
-
                             const x2 = this.chart.timeScale().timeToCoordinate(line.t2);
                             const y2 = this.candleSeries.priceToCoordinate(line.p2);
-
                             if (x1 == null || x2 == null || y1 == null || y2 == null) continue;
-
                             const dist = this.pointToSegmentDistance(
                                 mouseX, mouseY,
                                 x1, y1,
                                 x2, y2
                             );
-
                             if (dist < minDist) {
                                 minDist = dist;
                                 deleteIndex = i;
                             }
                         }
-
                         // 最大允许距离（像素）
                         const MAX_DISTANCE = 10;
-
                         if (deleteIndex !== -1 && minDist < MAX_DISTANCE) {
                             this.trendLines.splice(deleteIndex, 1);
                             this.renderOverlay();
@@ -766,17 +747,28 @@
                     if (this.activeTool === 'rect') {
                         // ===== 2 删除矩形 =====
                         for (let i = 0; i < this.rects.length; i++) {
-
                             const r = this.rects[i];
-
                             const minT = Math.min(r.t1, r.t2);
                             const maxT = Math.max(r.t1, r.t2);
-
                             const minP = Math.min(r.p1, r.p2);
                             const maxP = Math.max(r.p1, r.p2);
-
                             if (time >= minT && time <= maxT && price >= minP && price <= maxP) {
                                 this.rects.splice(i, 1);
+                                this.renderOverlay();
+                                return;
+                            }
+                        }
+                    }
+
+                    if (this.activeTool === 'textbox') {
+                        for (let i = 0; i < this.textBoxes.length; i++) {
+                            const r = this.textBoxes[i];
+                            const minT = Math.min(r.t1, r.t2);
+                            const maxT = Math.max(r.t1, r.t2);
+                            const minP = Math.min(r.p1, r.p2);
+                            const maxP = Math.max(r.p1, r.p2);
+                            if (time >= minT && time <= maxT && price >= minP && price <= maxP) {
+                                this.textBoxes.splice(i, 1);
                                 this.renderOverlay();
                                 return;
                             }
@@ -786,9 +778,7 @@
                     if (this.activeTool === 'rr') {
                         // ===== 3 删除 RR 工具 =====
                         for (let i = 0; i < this.rrTools.length; i++) {
-
                             const rr = this.rrTools[i];
-
                             if (
                                 Math.abs(rr.entryTime - time) < thresholdTime &&
                                 Math.abs(rr.entryPrice - price) < thresholdPrice
@@ -805,7 +795,6 @@
                         for (let i = 0; i < this.mmTools.length; i++) {
 
                             const mm = this.mmTools[i];
-
                             if (
                                 Math.abs(mm.entryTime - time) < thresholdTime &&
                                 Math.abs(mm.entryPrice - price) < thresholdPrice
