@@ -366,7 +366,7 @@
 
                 <!-- 加载/刷新按钮组 -->
                 <div class="btn-group">
-                    <button @click="loadKlineByDateRange(0, 0)">加载数据</button>
+                    <button @click="loadKlineByDateRange(0, 0)" style="background-color: #29c15e;">加载数据</button>
                     <button @click="reDownloadKlineByDateRange()">刷新数据</button>
                 </div>
 
@@ -516,6 +516,7 @@
                         price: '',
                         color: '#a7eec0'
                     },
+                    priceLinesData: [],
                     priceLines: [], // 已添加的价格线列表，每项结构：{title, price, color, visible, series}
                     editingPriceLineIndex: -1, // 正在编辑的价格线索引（-1表示未编辑）
 
@@ -543,6 +544,7 @@
                             this.rects = value.rects || [];
                             this.rrTools = value.rrTools || [];
                             this.mmTools = value.mmTools || [];
+                            this.priceLinesData = value.priceLines || []; // ✅ 只保存纯数据
 
                             this.saveCache();
                             this.$nextTick(() => {
@@ -749,7 +751,13 @@
                         trendLines: this.trendLines,
                         rects: this.rects,
                         rrTools: this.rrTools,
-                        mmTools: this.mmTools
+                        mmTools: this.mmTools,
+                        priceLines: this.priceLines.map(l => ({
+                            title: l.title,
+                            price: l.price,
+                            color: l.color,
+                            visible: l.visible
+                        }))   // ✅ 只存纯数据
                     };
                     const response = await fetch(
                         `${this.apiBaseUrl}/api/chart`,
@@ -766,7 +774,17 @@
                     window.history.replaceState({}, '', newUrl);
                     alert("分享链接已复制:\n" + shareUrl);
                 },
-
+                restorePriceLines() {
+                    if (!this.priceLinesData || !this.chart) return;
+                    this.priceLinesData.forEach(data => {
+                        this.newPriceLine.color = data.color;
+                        this.newPriceLine.title = data.title;
+                        this.newPriceLine.price = data.price;
+                        console.log('addPriceLine', data);
+                        this.addPriceLine();
+                    });
+                    this.priceLinesData = [];
+                },
                 setTheme(theme) {
                     this.theme = theme;
                     localStorage.setItem('chart_theme', theme);
@@ -940,7 +958,7 @@
                 // 添加价格线
                 addPriceLine() {
                     if (!this.newPriceLine.price) {
-                        this.showOperateMsg('名称和价格不能为空', false);
+                        window.alert('名称和价格不能为空');
                         return;
                     }
                     // 判断是否为编辑状态
@@ -1890,7 +1908,7 @@
                         const ema20Data = this.calculateEMA(chartData, 20);
                         this.ema20Series.setData(ema20Data);
                         this.chart.timeScale().fitContent();
-
+                        this.restorePriceLines(this.priceLinesData); // ✅ 恢复价格线
                         this.showOperateMsg(`成功加载${this.targetStep}根K线`, true);
                     } catch (error) {
                         console.error('加载K线失败：', error);
@@ -1934,7 +1952,7 @@
                         const ema20Data = this.calculateEMA(chartData, 20);
                         this.ema20Series.setData(ema20Data);
                         this.chart.timeScale().fitContent();
-
+                        this.restorePriceLines(this.priceLinesData); // ✅ 恢复价格线
                         this.showOperateMsg(`成功加载${this.targetStep}根K线`, true);
                     } catch (error) {
                         console.error('加载K线失败：', error);
