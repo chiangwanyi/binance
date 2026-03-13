@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <title>摄像头录像时间轴播放器</title>
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css"/>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.polyfilled.min.js"></script>
@@ -79,195 +79,181 @@
 
 <body>
 
-    <div id="app">
-        <h2>📹 摄像头录像时间轴播放器</h2>
+<div id="app">
+    <h2>📹 摄像头录像时间轴播放器</h2>
 
-        <div class="panel">
-            <div style="margin-bottom:10px">
-                Start
-                <input v-model="startInput">
+    <div class="panel">
+        <div style="margin-bottom:10px">
+            Start
+            <input v-model="startInput">
 
-                Duration
-                <input type="number" v-model.number="duration">
+            Duration
+            <input type="number" v-model.number="duration">
 
-                Channel
-                <input type="number" v-model.number="channelId">
+            Channel
+            <input type="number" v-model.number="channelId">
 
-                <button @click="playManual">播放</button>
+            <button @click="playManual">播放</button>
+        </div>
+
+        <video id="player" playsinline controls muted></video>
+
+        <div class="timeline">
+            <input id="slider" type="range" min="0" max="86400" v-model.number="sliderSeconds"
+                   @mousedown="onDragStart" @mouseup="onDragEnd" @input="onSliderInput">
+
+            <div class="scale">
+                <span>00:00</span>
+                <span>06:00</span>
+                <span>12:00</span>
+                <span>18:00</span>
+                <span>24:00</span>
             </div>
 
-            <video id="player" playsinline controls></video>
-
-            <div class="timeline">
-                <input id="slider" type="range" min="0" max="86400" v-model.number="sliderSeconds"
-                    @mousedown="onDragStart" @mouseup="onDragEnd" @input="onSliderInput">
-
-                <div class="scale">
-                    <span>00:00</span>
-                    <span>06:00</span>
-                    <span>12:00</span>
-                    <span>18:00</span>
-                    <span>24:00</span>
-                </div>
-
-                <div class="time">
-                    {{dateStr}} {{secondsToTime(sliderSeconds)}}
-                </div>
+            <div class="time">
+                {{dateStr}} {{secondsToTime(sliderSeconds)}}
             </div>
         </div>
     </div>
+</div>
 
-    <script>
-        const { createApp, ref, onMounted } = Vue
+<script>
+    const { createApp, ref, onMounted } = Vue
 
-        createApp({
-            setup() {
-                // 接口基础地址
-                const baseUrl = "http://localhost:8765/camera/video"
-                // 当前日期
-                const dateStr = ref("2026-03-13")
+    createApp({
+        setup() {
+            const baseUrl = "http://localhost:8765/camera/video"
+            const dateStr = ref("2026-03-13")
 
-                // 配置参数
-                const duration = ref(60)
-                const channelId = ref(0)
-                // 时间轴秒数
-                const sliderSeconds = ref(0)
-                // 开始时间输入框
-                const startInput = ref("2026-03-13 10:00:00")
+            const duration = ref(60)
+            const channelId = ref(0)
+            const sliderSeconds = ref(0)
+            const startInput = ref("2026-03-13 10:00:00")
 
-                // 播放器实例
-                let player = null
-                // 当前视频开始时间
-                let currentStart = null
-                // 是否正在拖拽时间轴
-                let isDragging = false
+            let player = null
+            let currentStart = null
+            let isDragging = false
 
-                // 秒数转时分秒
-                function secondsToTime(sec) {
-                    const h = Math.floor(sec / 3600)
-                    const m = Math.floor((sec % 3600) / 60)
-                    const s = sec % 60
-                    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-                }
+            // 秒数转时间
+            function secondsToTime(sec) {
+                const h = Math.floor(sec / 3600)
+                const m = Math.floor((sec % 3600) / 60)
+                const s = sec % 60
+                return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+            }
 
-                // 日期格式化
-                function formatDate(date) {
-                    const y = date.getFullYear()
-                    const m = String(date.getMonth() + 1).padStart(2, '0')
-                    const d = String(date.getDate()).padStart(2, '0')
-                    const h = String(date.getHours()).padStart(2, '0')
-                    const mi = String(date.getMinutes()).padStart(2, '0')
-                    const s = String(date.getSeconds()).padStart(2, '0')
-                    return `${y}-${m}-${d} ${h}:${mi}:${s}`
-                }
+            // 日期格式化
+            function formatDate(date) {
+                const y = date.getFullYear()
+                const m = String(date.getMonth() + 1).padStart(2, '0')
+                const d = String(date.getDate()).padStart(2, '0')
+                const h = String(date.getHours()).padStart(2, '0')
+                const mi = String(date.getMinutes()).padStart(2, '0')
+                const s = String(date.getSeconds()).padStart(2, '0')
+                return `${y}-${m}-${d} ${h}:${mi}:${s}`
+            }
 
-                // 获取当天的秒数
-                function getSecondsOfDay(date) {
-                    return date.getHours() * 3600 + date.getMinutes() * 60 + date.getSeconds()
-                }
+            // 获取当天秒数
+            function getSecondsOfDay(date) {
+                return date.getHours() * 3600 + date.getMinutes() * 60 + date.getSeconds()
+            }
 
-                // 加载并播放视频
-                function loadVideo(startStr) {
-                    try {
-                        currentStart = new Date(startStr.replace(/-/g, "/"))
-                        if (isNaN(currentStart.getTime())) {
-                            alert("时间格式错误！请使用：YYYY-MM-DD HH:mm:ss")
-                            return
-                        }
-
-                        // 拼接视频地址
-                        const url = `${baseUrl}?start=${encodeURIComponent(startStr)}&duration=${duration.value}&channelId=${channelId.value}`
-
-                        // 更新播放器源
-                        player.source = {
-                            type: 'video',
-                            sources: [{
-                                src: url,
-                                type: 'video/mp4'
-                            }]
-                        }
-
-                        // 同步时间轴
-                        sliderSeconds.value = getSecondsOfDay(currentStart)
-                        startInput.value = startStr
-                    } catch (e) {
-                        console.error("视频加载失败：", e)
-                        alert("视频加载失败，请检查时间格式")
+            // 加载视频 + 加载完成自动播放
+            function loadVideo(startStr) {
+                try {
+                    currentStart = new Date(startStr.replace(/-/g, "/"))
+                    if (isNaN(currentStart.getTime())) {
+                        alert("时间格式错误！请使用：YYYY-MM-DD HH:mm:ss")
+                        return
                     }
-                }
 
-                // 手动播放
-                function playManual() {
-                    loadVideo(startInput.value)
-                }
+                    const url = `${baseUrl}?start=${encodeURIComponent(startStr)}&duration=${duration.value}&channelId=${channelId.value}`
 
-                // 拖拽开始
-                function onDragStart() {
-                    isDragging = true
-                    player.pause() // 拖拽时暂停视频
-                }
+                    player.source = {
+                        type: 'video',
+                        sources: [{
+                            src: url,
+                            type: 'video/mp4'
+                        }]
+                    }
 
-                // 拖拽结束
-                function onDragEnd() {
-                    if (!isDragging) return
-                    isDragging = false
+                    sliderSeconds.value = getSecondsOfDay(currentStart)
+                    startInput.value = startStr
 
-                    // 根据秒数计算时间
-                    const date = new Date(dateStr.value + " 00:00:00")
-                    date.setSeconds(sliderSeconds.value)
-                    const start = formatDate(date)
-
-                    // 加载新视频
-                    loadVideo(start)
-                }
-
-                // 拖拽中（仅更新显示）
-                function onSliderInput() {
-                    // 空函数，仅响应v-model更新显示
-                }
-
-                // 挂载后初始化
-                onMounted(() => {
-                    // 初始化播放器
-                    player = new Plyr("#player", {
-                        controls: ['play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen']
+                    // 监听视频加载完成，加载完毕自动播放
+                    player.on('loadeddata', () => {
+                        player.play().catch(err => console.log("自动播放失败：", err))
                     })
 
-                    // 视频播放时同步时间轴
-                    player.on("timeupdate", () => {
-                        if (isDragging || !currentStart) return
-                        const sec = getSecondsOfDay(currentStart) + Math.floor(player.currentTime)
-                        sliderSeconds.value = sec
-                    })
-
-                    // 视频结束自动播放下一段
-                    player.on("ended", () => {
-                        if (!currentStart) return
-                        const next = new Date(currentStart)
-                        next.setSeconds(next.getSeconds() + duration.value)
-                        const start = formatDate(next)
-                        loadVideo(start)
-                    })
-
-                    // 初始化加载默认时间
-                    loadVideo(startInput.value)
-                })
-
-                return {
-                    duration,
-                    channelId,
-                    sliderSeconds,
-                    startInput,
-                    dateStr,
-                    secondsToTime,
-                    playManual,
-                    onDragStart,
-                    onDragEnd,
-                    onSliderInput
+                } catch (e) {
+                    console.error("视频加载失败：", e)
+                    alert("视频加载失败")
                 }
             }
-        }).mount("#app")
-    </script>
+
+            // 手动播放
+            function playManual() {
+                loadVideo(startInput.value)
+            }
+
+            // 拖拽开始
+            function onDragStart() {
+                isDragging = true
+                player.pause()
+            }
+
+            // 拖拽结束
+            function onDragEnd() {
+                if (!isDragging) return
+                isDragging = false
+                const date = new Date(dateStr.value + " 00:00:00")
+                date.setSeconds(sliderSeconds.value)
+                const start = formatDate(date)
+                loadVideo(start)
+            }
+
+            function onSliderInput() {}
+
+            // 初始化
+            onMounted(() => {
+                player = new Plyr("#player", {
+                    controls: ['play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen']
+                })
+
+                // 播放进度同步时间轴
+                player.on("timeupdate", () => {
+                    if (isDragging || !currentStart) return
+                    const sec = getSecondsOfDay(currentStart) + Math.floor(player.currentTime)
+                    sliderSeconds.value = sec
+                })
+
+                // 播放完毕自动下一段
+                player.on("ended", () => {
+                    if (!currentStart) return
+                    const next = new Date(currentStart)
+                    next.setSeconds(next.getSeconds() + duration.value)
+                    const start = formatDate(next)
+                    loadVideo(start)
+                })
+
+                loadVideo(startInput.value)
+            })
+
+            return {
+                duration,
+                channelId,
+                sliderSeconds,
+                startInput,
+                dateStr,
+                secondsToTime,
+                playManual,
+                onDragStart,
+                onDragEnd,
+                onSliderInput
+            }
+        }
+    }).mount("#app")
+</script>
 
 </body>
 
