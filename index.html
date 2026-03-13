@@ -290,14 +290,14 @@
                     <button style="color: red" @click="clearAllOverlays">清除图形</button>
                 </div>
 
-                <label>线段工具</label>
+                <label>线段工具（按DEL删除图形）</label>
                 <div class="btn-group">
                     <button :class="{active: activeTool==='trendline'}" @click="setTool('trendline')">趋势线</button>
                     <button :class="{active: activeTool==='rr'}" @click="setTool('rr')">盈亏比</button>
                     <button :class="{active: activeTool==='mm'}" @click="setTool('mm')">MM</button>
                 </div>
 
-                <label>矩形工具</label>
+                <label>矩形工具（按DEL删除图形）</label>
                 <div class="btn-group">
                     <button :class="{active: activeTool==='rect'}" @click="setTool('rect')">矩形</button>
                     <button :class="{active: activeRectColor==='#a7eec0'}" style="color: #a7eec0"
@@ -306,6 +306,17 @@
                         @click="activeRectColor = '#f46060'">红色</button>
                     <button :class="{active: activeRectColor==='#efd763'}" style="color: #efd763"
                         @click="activeRectColor = '#efd763'">橙色</button>
+                </div>
+
+                <label>文本框工具（E编辑，ESC退出）</label>
+                <div class="btn-group">
+                    <button :class="{active: activeTool==='textbox'}" @click="setTool('textbox')">文本框</button>
+
+                    <button :class="{active: activeTextColor==='#22c55e'}" style="color:#22c55e"
+                        @click="activeTextColor='#22c55e'">绿色</button>
+
+                    <button :class="{active: activeTextColor==='#ef4444'}" style="color:#ef4444"
+                        @click="activeTextColor='#ef4444'">红色</button>
                 </div>
             </div>
 
@@ -522,6 +533,13 @@
                     priceLines: [], // 已添加的价格线列表，每项结构：{title, price, color, visible, series}
                     editingPriceLineIndex: -1, // 正在编辑的价格线索引（-1表示未编辑）
 
+                    // ===== 文本框工具 =====
+                    textBoxes: [],        // 已创建文本框
+                    textBoxTemp: null,    // 临时文本框
+                    activeTextColor: '#22c55e',
+                    editingTextBoxIndex: -1,
+                    isEditingText: false,
+
                     // API基础地址
                     apiBaseUrl: 'http://localhost:8765'
                 };
@@ -546,6 +564,7 @@
                             this.rects = value.rects || [];
                             this.rrTools = value.rrTools || [];
                             this.mmTools = value.mmTools || [];
+                            this.textBoxes = value.textBoxes || [];
                             this.priceLinesData = value.priceLines || []; // ✅ 只保存纯数据
 
                             this.saveCache();
@@ -638,8 +657,37 @@
                     this.saveCache();
                 },
                 handleKeyDown(e) {
-                    if (e.key !== 'Delete') return;
-                    this.deleteShapeUnderCursor();
+                    // ===== E编辑文本 =====
+                    if (e.key === 'e' || e.key === 'E') {
+                        const time = this.chart.timeScale().coordinateToTime(this.currentMouseX);
+                        const price = this.candleSeries.coordinateToPrice(this.currentMouseY);
+
+                        for (let i = 0; i < this.textBoxes.length; i++) {
+
+                            const tb = this.textBoxes[i];
+
+                            const minT = Math.min(tb.t1, tb.t2);
+                            const maxT = Math.max(tb.t1, tb.t2);
+
+                            const minP = Math.min(tb.p1, tb.p2);
+                            const maxP = Math.max(tb.p1, tb.p2);
+
+                            if (time >= minT && time <= maxT && price >= minP && price <= maxP) {
+
+                                const txt = prompt("编辑文本", tb.text);
+
+                                if (txt !== null) {
+                                    tb.text = txt;
+                                }
+
+                                this.activeTool = 'cursor';
+                                this.renderOverlay();
+                                return;
+                            }
+                        }
+                    } else if (e.key === 'Delete') {
+                        this.deleteShapeUnderCursor();
+                    }
                 },
                 pointToSegmentDistance(px, py, x1, y1, x2, y2) {
 
@@ -780,6 +828,7 @@
                         rects: this.rects,
                         rrTools: this.rrTools,
                         mmTools: this.mmTools,
+                        textBoxes: this.textBoxes,
                         priceLines: this.priceLines.map(l => ({
                             title: l.title,
                             price: l.price,
@@ -808,7 +857,6 @@
                         this.newPriceLine.color = data.color;
                         this.newPriceLine.title = data.title;
                         this.newPriceLine.price = data.price;
-                        console.log('addPriceLine', data);
                         this.addPriceLine();
                     });
                     this.priceLinesData = [];
@@ -911,6 +959,7 @@
                     this.rectTemp = null;
                     this.rrTemp = null;
                     this.mmTemp = null;
+                    this.textBoxTemp = null;
                 },
                 /**
                  * 初始化图表
@@ -1133,6 +1182,8 @@
                     this.renderTrendLines(svg);
                     // 渲染矩形
                     this.renderRects(svg);
+                    // 渲染文本框
+                    this.renderTextBoxes(svg);
                     // 渲染盈亏比工具
                     this.renderRRTools(svg);
                     // 渲染MM工具
@@ -1141,6 +1192,48 @@
                     this.renderTempElements(svg);
                     // 渲染 K 线序号（Bar Count）
                     this.renderBarCount(svg);
+                },
+                renderTextBoxes(svg) {
+
+                    this.textBoxes.forEach((tb, index) => {
+
+                        const x1 = this.chart.timeScale().timeToCoordinate(tb.t1);
+                        const x2 = this.chart.timeScale().timeToCoordinate(tb.t2);
+                        const y1 = this.candleSeries.priceToCoordinate(tb.p1);
+                        const y2 = this.candleSeries.priceToCoordinate(tb.p2);
+
+                        if (x1 == null || x2 == null || y1 == null || y2 == null) return;
+
+                        const rx = Math.min(x1, x2);
+                        const ry = Math.min(y1, y2);
+                        const w = Math.abs(x2 - x1);
+                        const h = Math.abs(y2 - y1);
+
+                        // 边框
+                        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                        rect.setAttribute('x', rx);
+                        rect.setAttribute('y', ry);
+                        rect.setAttribute('width', w);
+                        rect.setAttribute('height', h);
+                        rect.setAttribute('fill', 'none');
+                        rect.setAttribute('stroke', tb.color);
+                        rect.setAttribute('stroke-width', '1.5');
+
+                        svg.appendChild(rect);
+
+                        // 文本
+                        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                        text.setAttribute('x', rx + 4);
+                        text.setAttribute('y', ry + 14);
+                        text.setAttribute('fill', tb.color);
+                        text.setAttribute('font-size', '12');
+                        text.setAttribute('white-space', 'pre-wrap');
+
+                        text.textContent = tb.text;
+
+                        svg.appendChild(text);
+                    });
+
                 },
                 renderBarCount(svg) {
                     if (!this.currentKlineData.length) return;
@@ -1354,6 +1447,11 @@
                         this.drawRect(svg, this.rectTemp, this.activeRectColor, 0.1);
                     }
 
+                    // 临时文本框
+                    if (this.textBoxTemp && this.activeTool === 'textbox') {
+                        this.drawTextBox(svg, this.textBoxTemp, this.activeTextColor);
+                    }
+
                     // 渲染临时盈亏比工具（完整预览效果）
                     if (this.rrTemp && this.activeTool === 'rr') {
                         // 增加空值检查
@@ -1513,6 +1611,32 @@
 
                     svg.appendChild(rectEl);
                 },
+                drawTextBox(svg, rect, color) {
+
+                    const x1 = this.chart.timeScale().timeToCoordinate(rect.t1);
+                    const x2 = this.chart.timeScale().timeToCoordinate(rect.t2);
+                    const y1 = this.candleSeries.priceToCoordinate(rect.p1);
+                    const y2 = this.candleSeries.priceToCoordinate(rect.p2);
+
+                    if (x1 == null || x2 == null || y1 == null || y2 == null) return;
+
+                    const rx = Math.min(x1, x2);
+                    const ry = Math.min(y1, y2);
+                    const w = Math.abs(x2 - x1);
+                    const h = Math.abs(y2 - y1);
+
+                    const el = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+
+                    el.setAttribute('x', rx);
+                    el.setAttribute('y', ry);
+                    el.setAttribute('width', w);
+                    el.setAttribute('height', h);
+                    el.setAttribute('fill', 'none');
+                    el.setAttribute('stroke', color);
+                    el.setAttribute('stroke-dasharray', '4,4');
+
+                    svg.appendChild(el);
+                },
                 /**
                  * 绘制盈亏比矩形（自定义样式：去掉左右边框，上下边框虚线）
                  */
@@ -1665,6 +1789,17 @@
                         this.handleRRDown(e);
                     } else if (this.activeTool === 'mm') {
                         this.handleMMDown(e);
+                    } else if (this.activeTool === 'textbox') {
+                        const time = this.chart.timeScale().coordinateToTime(e.offsetX);
+                        const price = this.candleSeries.coordinateToPrice(e.offsetY);
+                        if (!time || price == null) return;
+                        this.overlayDragging = true;
+                        this.textBoxTemp = {
+                            t1: time,
+                            p1: price,
+                            t2: time,
+                            p2: price
+                        };
                     }
                 },
                 /**
@@ -1703,6 +1838,13 @@
                         if (!t || p == null) return;
                         this.mmTemp.stopTime = t;
                         this.mmTemp.stopPrice = p;
+                        this.renderOverlay();
+                    } else if (this.overlayDragging && this.activeTool === 'textbox') {
+                        const time = this.chart.timeScale().coordinateToTime(e.offsetX);
+                        const price = this.candleSeries.coordinateToPrice(e.offsetY);
+                        if (!time || price == null) return;
+                        this.textBoxTemp.t2 = time;
+                        this.textBoxTemp.p2 = price;
                         this.renderOverlay();
                     }
                 },
@@ -1750,6 +1892,15 @@
                             this.showOperateMsg('盈亏比工具绘制完成，已自动生成1/2/3倍目标位', true);
                         }
                         this.mmTemp = null;
+                        this.renderOverlay();
+                    } else if (this.overlayDragging && this.activeTool === 'textbox') {
+                        this.textBoxes.push({
+                            ...this.textBoxTemp,
+                            text: "请输入文本",
+                            color: this.activeTextColor
+                        });
+                        this.textBoxTemp = null;
+                        this.overlayDragging = false;
                         this.renderOverlay();
                     }
                 },
