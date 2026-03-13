@@ -72,64 +72,60 @@ public class DahuaController {
             return;
         }
 
-        long fileLength = file.length();
-        String range = request.getHeader("Range");
+        // ===================== 核心改造：读入内存 → 立即删除文件 =====================
+        byte[] videoBytes;
+        try (FileInputStream fis = new FileInputStream(file)) {
+            // 一次性读入内存
+            videoBytes = new byte[(int) file.length()];
+            fis.read(videoBytes);
+        } finally {
+            // 无论如何都删除磁盘文件！！！
+            file.delete();
+        }
 
-        response.setHeader("Accept-Ranges", "bytes");
-        response.setContentType("video/mp4");
+        // 后续全部使用内存字节流，不再操作磁盘文件
+        try (ByteArrayInputStream byteIn = new ByteArrayInputStream(videoBytes);
+             OutputStream out = response.getOutputStream()) {
 
-        if (range == null) {
+            long fileLength = videoBytes.length;
+            String range = request.getHeader("Range");
 
-            response.setHeader("Content-Length", String.valueOf(fileLength));
+            response.setHeader("Accept-Ranges", "bytes");
+            response.setContentType("video/mp4");
 
-            try (InputStream in = new FileInputStream(file);
-                 OutputStream out = response.getOutputStream()) {
-
+            if (range == null) {
+                response.setHeader("Content-Length", String.valueOf(fileLength));
                 byte[] buffer = new byte[8192];
                 int len;
-
-                while ((len = in.read(buffer)) != -1) {
+                while ((len = byteIn.read(buffer)) != -1) {
                     out.write(buffer, 0, len);
                 }
-            }
 
-        } else {
+            } else {
+                long startByte = 0;
+                long endByte = fileLength - 1;
+                String[] ranges = range.replace("bytes=", "").split("-");
 
-            long startByte = 0;
-            long endByte = fileLength - 1;
+                startByte = Long.parseLong(ranges[0]);
+                if (ranges.length > 1) {
+                    endByte = Long.parseLong(ranges[1]);
+                }
 
-            String[] ranges = range.replace("bytes=", "").split("-");
+                // 安全校验
+                if (endByte >= fileLength) endByte = fileLength - 1;
+                long contentLength = endByte - startByte + 1;
 
-            startByte = Long.parseLong(ranges[0]);
+                response.setStatus(HttpServletResponse.SC_PARTIAL_CONTENT);
+                response.setHeader("Content-Range", "bytes " + startByte + "-" + endByte + "/" + fileLength);
+                response.setHeader("Content-Length", String.valueOf(contentLength));
 
-            if (ranges.length > 1) {
-                endByte = Long.parseLong(ranges[1]);
-            }
-
-            long contentLength = endByte - startByte + 1;
-
-            response.setStatus(HttpServletResponse.SC_PARTIAL_CONTENT);
-
-            response.setHeader(
-                    "Content-Range",
-                    "bytes " + startByte + "-" + endByte + "/" + fileLength
-            );
-
-            response.setHeader("Content-Length", String.valueOf(contentLength));
-
-            try (RandomAccessFile raf = new RandomAccessFile(file, "r");
-                 OutputStream out = response.getOutputStream()) {
-
-                raf.seek(startByte);
-
+                // 内存流定位
+                byteIn.skip(startByte);
                 byte[] buffer = new byte[8192];
                 long remaining = contentLength;
-
                 int len;
 
-                while (remaining > 0 &&
-                        (len = raf.read(buffer, 0, (int) Math.min(buffer.length, remaining))) != -1) {
-
+                while (remaining > 0 && (len = byteIn.read(buffer, 0, (int) Math.min(buffer.length, remaining))) != -1) {
                     out.write(buffer, 0, len);
                     remaining -= len;
                 }
