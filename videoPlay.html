@@ -1,61 +1,143 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
-    <title>摄像头录像测试</title>
+    <title>摄像头录像播放器</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css"/>
+
     <style>
-        body { max-width: 900px; margin: 30px auto; font-size: 16px; }
-        .form-box { margin-bottom: 20px; }
-        input { padding: 8px; width: 280px; margin-right: 10px; }
-        button { padding: 8px 16px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
-        .video-box { margin-top: 20px; }
-        video { width: 100%; border: 1px solid #ccc; }
+
+        body{
+            font-family: Arial;
+            background:#f5f7fa;
+            max-width:900px;
+            margin:40px auto;
+        }
+
+        .form-box{
+            background:white;
+            padding:20px;
+            border-radius:8px;
+            box-shadow:0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        input{
+            padding:8px;
+            width:220px;
+            margin-right:10px;
+        }
+
+        button{
+            padding:8px 18px;
+            border:none;
+            border-radius:4px;
+            background:#1677ff;
+            color:white;
+            cursor:pointer;
+        }
+
+        .player-box{
+            margin-top:25px;
+        }
+
     </style>
+
 </head>
+
 <body>
-<h2>大华摄像头录像下载/播放</h2>
+
+<h2>📹 大华摄像头录像播放器</h2>
 
 <div class="form-box">
-    <input type="text" id="startTime" value="2026-03-13 10:00:00" placeholder="开始时间：YYYY-MM-DD HH:mm:ss">
-    <input type="number" id="duration" value="60" placeholder="时长（秒）">
-    <!--  ChannelId  -->
-    <input type="number" id="channelId" value="0" placeholder="通道ID">
-    <button onclick="playVideo()">播放视频</button>
-    <button onclick="downloadVideo()">下载视频</button>
+
+    <input id="startTime" value="2026-03-13 10:00:00">
+
+    <input id="duration" type="number" value="60">
+
+    <input id="channelId" type="number" value="0">
+
+    <button onclick="playVideo()">播放</button>
+    <button onclick="downloadVideo()">下载</button>
+
 </div>
 
-<div class="video-box">
-    <video id="videoPlayer" controls></video>
+
+<div class="player-box">
+
+    <video
+            id="player"
+            playsinline
+            controls
+    ></video>
+
 </div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.min.js"></script>
 
 <script>
-    // 后端接口地址
-    const baseUrl = "http://localhost:8765/camera/download";
 
-    // 播放视频
-    function playVideo() {
-        const startTime = document.getElementById("startTime").value;
-        const duration = document.getElementById("duration").value;
-        const channelId = document.getElementById("channelId").value;
+    const player = new Plyr('#player',{
+        controls:[
+            'play',
+            'progress',
+            'current-time',
+            'duration',
+            'mute',
+            'volume',
+            'settings',
+            'fullscreen'
+        ],
+        settings:['speed'],
+        speed:{
+            selected:1,
+            options:[0.5,1,1.5,2]
+        }
+    })
 
-        const url = `${baseUrl}?start=${encodeURIComponent(startTime)}&duration=${duration}&channelId=${channelId}`;
-        document.getElementById("videoPlayer").src = url;
+    const baseUrl="http://localhost:8765/camera/video"
+
+
+    function playVideo(){
+
+        const start=document.getElementById("startTime").value
+        const duration=document.getElementById("duration").value
+        const channelId=document.getElementById("channelId").value
+
+        const url=
+            `${baseUrl}?start=${encodeURIComponent(start)}&duration=${duration}&channelId=${channelId}`
+
+        player.source={
+            type:'video',
+            sources:[
+                {
+                    src:url,
+                    type:'video/mp4'
+                }
+            ]
+        }
+
     }
 
-    // 下载视频
-    function downloadVideo() {
-        const startTime = document.getElementById("startTime").value;
-        const duration = document.getElementById("duration").value;
-        const channelId = document.getElementById("channelId").value;
+    function downloadVideo(){
 
-        const url = `${baseUrl}?start=${encodeURIComponent(startTime)}&duration=${duration}&channelId=${channelId}`;
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        const start=document.getElementById("startTime").value
+        const duration=document.getElementById("duration").value
+        const channelId=document.getElementById("channelId").value
+
+        const url=
+            `${baseUrl}?start=${encodeURIComponent(start)}&duration=${duration}&channelId=${channelId}`
+
+        const a=document.createElement("a")
+        a.href=url
+        a.download=""
+        a.click()
+
     }
+
 </script>
+
 </body>
 </html>
