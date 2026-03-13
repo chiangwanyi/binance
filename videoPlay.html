@@ -63,17 +63,11 @@
 
 </div>
 
-
 <div class="player-box">
 
-    <video
-            id="player"
-            playsinline
-            controls
-    ></video>
+    <video id="player" playsinline controls></video>
 
 </div>
-
 
 <script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.min.js"></script>
 
@@ -89,18 +83,21 @@
             'volume',
             'settings',
             'fullscreen'
-        ],
-        settings:['speed'],
-        speed:{
-            selected:1,
-            options:[0.5,1,1.5,2]
-        }
+        ]
     })
 
     const baseUrl="http://localhost:8765/camera/video"
 
+    let autoLoop=true
 
     function playVideo(){
+
+        loadAndPlay()
+
+    }
+
+
+    function loadAndPlay(){
 
         const start=document.getElementById("startTime").value
         const duration=document.getElementById("duration").value
@@ -119,7 +116,49 @@
             ]
         }
 
+        // 视频加载完成后自动播放
+        player.once('ready',()=>{
+            player.play()
+        })
+
     }
+
+
+    player.on('ended',()=>{
+
+        if(!autoLoop) return
+
+        const duration=parseInt(document.getElementById("duration").value)
+
+        let start=document.getElementById("startTime").value
+
+        const date=new Date(start.replace(/-/g,"/"))
+
+        date.setSeconds(date.getSeconds()+duration)
+
+        const newStart=formatDate(date)
+
+        document.getElementById("startTime").value=newStart
+
+        loadAndPlay()
+
+    })
+
+
+    function formatDate(date){
+
+        const y=date.getFullYear()
+        const m=String(date.getMonth()+1).padStart(2,'0')
+        const d=String(date.getDate()).padStart(2,'0')
+
+        const h=String(date.getHours()).padStart(2,'0')
+        const mi=String(date.getMinutes()).padStart(2,'0')
+        const s=String(date.getSeconds()).padStart(2,'0')
+
+        return `${y}-${m}-${d} ${h}:${mi}:${s}`
+
+    }
+
 
     function downloadVideo(){
 
