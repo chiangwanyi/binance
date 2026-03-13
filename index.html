@@ -140,7 +140,7 @@
             <div style="display:flex;gap:4px;margin-bottom:12px;">
                 <button @click="setTheme('dark')" :class="{active: theme==='dark'}">🌙 夜间</button>
                 <button @click="setTheme('light')" :class="{active: theme==='light'}">☀️ 日间</button>
-            <!-- 分享按钮 -->
+                <!-- 分享按钮 -->
                 <button @click="shareChart()">🔗 分享</button>
             </div>
             <div class="card">
@@ -159,40 +159,45 @@
                 <label>矩形工具</label>
                 <div style="display: flex;flex-direction: row;gap: 4px;">
                     <button :class="{active: activeTool==='rect'}" @click="setTool('rect')">矩形</button>
-                    <button :class="{active: activeRectColor==='#a7eec0'}" style="color: #a7eec0" @click="activeRectColor = '#a7eec0'">绿色</button>
-                    <button :class="{active: activeRectColor==='#f46060'}"  style="color: #f46060" @click="activeRectColor = '#f46060'">红色</button>
-                    <button :class="{active: activeRectColor==='#efd763'}"  style="color: #efd763" @click="activeRectColor = '#efd763'">橙色</button>
+                    <button :class="{active: activeRectColor==='#a7eec0'}" style="color: #a7eec0"
+                        @click="activeRectColor = '#a7eec0'">绿色</button>
+                    <button :class="{active: activeRectColor==='#f46060'}" style="color: #f46060"
+                        @click="activeRectColor = '#f46060'">红色</button>
+                    <button :class="{active: activeRectColor==='#efd763'}" style="color: #efd763"
+                        @click="activeRectColor = '#efd763'">橙色</button>
                 </div>
             </div>
             <div class="card">
                 <h3>K线加载</h3>
                 <div style="display: flex;flex-direction: column;">
-                    <label>标的
-                        <select v-model="symbol">
-                            <option value="BTCUSDT">BTCUSDT</option>
-                            <option value="ETHUSDT">ETHUSDT</option>
-                            <option value="XAUUSDT">XAUUSDT</option>
-                            <option value="XAGUSDT">XAGUSDT</option>
-                        </select>
-                    </label>
-                    <label>盘面
-                        <select v-model="location">
-                            <option value="utc8">常规UTC+8</option>
-                            <option value="et">美东9:30~16:10</option>
-                        </select>
-                    </label>
-                    <label>起始时间
-                        <input type="datetime-local" v-model="startTime">
-                    </label>
-                    <label>结束时间
-                        <input type="datetime-local" v-model="endTime">
-                    </label>
-                    <label>时间周期
+                    <div style="display: flex;flex-direction: row;gap: 4px;">
+                        <label>标的
+                            <select v-model="symbol">
+                                <option value="BTCUSDT">BTCUSDT</option>
+                                <option value="ETHUSDT">ETHUSDT</option>
+                                <option value="XAUUSDT">XAUUSDT</option>
+                                <option value="XAGUSDT">XAGUSDT</option>
+                            </select>
+                        </label>
+                        <label>盘面
+                            <select v-model="location">
+                                <option value="utc8">常规UTC+8</option>
+                                <option value="et">美东9:30~16:10</option>
+                            </select>
+                        </label>
+                        <label>时间周期
                         <select v-model="interval">
                             <option value="1m">1m</option>
                             <option value="5m">5m</option>
                             <option value="1h">1h</option>
                         </select>
+                    </label>
+                    </div>
+                    <label>起始时间
+                        <input type="datetime-local" v-model="startTime">
+                    </label>
+                    <label>结束时间
+                        <input type="datetime-local" v-model="endTime">
                     </label>
                     <div style="display: flex;flex-direction: row;gap: 2px;">
                         <button @click="loadKlineByDateRange(0, 0)">加载数据</button>
@@ -365,16 +370,16 @@
                         .then(res => res.json())
                         .then(data => {
                             let value = JSON.parse(data.data.content);
-                            this.symbol =value.symbol;
-                            this.startTime =value.startTime;
-                            this.endTime =value.endTime;
-                            this.interval =value.interval;
-                            this.location =value.location;
+                            this.symbol = value.symbol;
+                            this.startTime = value.startTime;
+                            this.endTime = value.endTime;
+                            this.interval = value.interval;
+                            this.location = value.location;
 
-                            this.trendLines =value.trendLines || [];
-                            this.rects =value.rects || [];
-                            this.rrTools =value.rrTools || [];
-                            this.mmTools =value.mmTools || [];
+                            this.trendLines = value.trendLines || [];
+                            this.rects = value.rects || [];
+                            this.rrTools = value.rrTools || [];
+                            this.mmTools = value.mmTools || [];
 
                             this.saveCache();
                             this.$nextTick(() => {
