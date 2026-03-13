@@ -3,180 +3,285 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>摄像头录像播放器</title>
+    <title>摄像头录像时间轴播放器</title>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css"/>
 
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.polyfilled.min.js"></script>
+
     <style>
-
-        body{
+        body {
             font-family: Arial;
-            background:#f5f7fa;
-            max-width:900px;
-            margin:40px auto;
+            background: #f5f7fa;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 20px;
         }
 
-        .form-box{
-            background:white;
-            padding:20px;
-            border-radius:8px;
-            box-shadow:0 2px 10px rgba(0,0,0,0.08);
+        .panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
         }
 
-        input{
-            padding:8px;
-            width:220px;
-            margin-right:10px;
+        input {
+            padding: 6px;
+            margin-right: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
         }
 
-        button{
-            padding:8px 18px;
-            border:none;
-            border-radius:4px;
-            background:#1677ff;
-            color:white;
-            cursor:pointer;
+        button {
+            padding: 6px 12px;
+            background: #409eff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
         }
 
-        .player-box{
-            margin-top:25px;
+        button:hover {
+            background: #337ecc;
         }
 
+        .timeline {
+            margin-top: 20px;
+        }
+
+        #slider {
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .scale {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-top: 4px;
+            color: #666;
+        }
+
+        .time {
+            margin-top: 8px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .plyr {
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .player-wrapper {
+            position: relative;
+            width: 100%;
+            height: 480px;   /* 固定高度 */
+            background: black;
+        }
+
+        #player {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .loading-mask {
+            position: absolute;
+            inset: 0;
+            background: black;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            z-index: 5;
+        }
     </style>
 
 </head>
 
 <body>
 
-<h2>📹 大华摄像头录像播放器</h2>
+<div id="app">
+    <h2>📹 摄像头录像时间轴播放器</h2>
 
-<div class="form-box">
+    <div class="panel">
+        <div style="margin-bottom:10px">
+            Start
+            <input v-model="startInput">
 
-    <input id="startTime" value="2026-03-13 10:00:00">
+            Duration
+            <input type="number" v-model.number="duration">
 
-    <input id="duration" type="number" value="60">
+            Channel
+            <input type="number" v-model.number="channelId">
 
-    <input id="channelId" type="number" value="0">
+            <button @click="playManual">播放</button>
+        </div>
 
-    <button onclick="playVideo()">播放</button>
-    <button onclick="downloadVideo()">下载</button>
+        <div class="player-wrapper">
+            <video id="player" playsinline muted></video>
 
+            <div class="loading-mask" v-if="loading">
+                正在加载录像...
+            </div>
+        </div>
+
+        <div class="timeline">
+            <input id="slider" type="range" min="0" max="86400" v-model.number="sliderSeconds"
+                   @mousedown="onDragStart" @mouseup="onDragEnd" @input="onSliderInput">
+
+            <div class="scale">
+                <span>00:00</span>
+                <span>06:00</span>
+                <span>12:00</span>
+                <span>18:00</span>
+                <span>24:00</span>
+            </div>
+
+            <div class="time">
+                {{dateStr}} {{secondsToTime(sliderSeconds)}}
+            </div>
+        </div>
+    </div>
 </div>
-
-<div class="player-box">
-
-    <video id="player" playsinline controls></video>
-
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.min.js"></script>
 
 <script>
+    const { createApp, ref, onMounted } = Vue
 
-    const player = new Plyr('#player',{
-        controls:[
-            'play',
-            'progress',
-            'current-time',
-            'duration',
-            'mute',
-            'volume',
-            'settings',
-            'fullscreen'
-        ]
-    })
+    createApp({
+        setup() {
+            const baseUrl = "http://localhost:8765/camera/video"
+            const dateStr = ref("2026-03-13")
 
-    const baseUrl="http://localhost:8765/camera/video"
+            const duration = ref(60)
+            const channelId = ref(0)
+            const sliderSeconds = ref(0)
+            const startInput = ref("2026-03-13 10:00:00")
 
-    let autoLoop=true
+            const loading = ref(false)
 
-    function playVideo(){
+            let player = null
+            let currentStart = null
+            let isDragging = false
 
-        loadAndPlay()
+            // 秒数转时间
+            function secondsToTime(sec) {
+                const h = Math.floor(sec / 3600)
+                const m = Math.floor((sec % 3600) / 60)
+                const s = sec % 60
+                return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+            }
 
-    }
+            // 日期格式化
+            function formatDate(date) {
+                const y = date.getFullYear()
+                const m = String(date.getMonth() + 1).padStart(2, '0')
+                const d = String(date.getDate()).padStart(2, '0')
+                const h = String(date.getHours()).padStart(2, '0')
+                const mi = String(date.getMinutes()).padStart(2, '0')
+                const s = String(date.getSeconds()).padStart(2, '0')
+                return `${y}-${m}-${d} ${h}:${mi}:${s}`
+            }
 
+            // 获取当天秒数
+            function getSecondsOfDay(date) {
+                return date.getHours() * 3600 + date.getMinutes() * 60 + date.getSeconds()
+            }
 
-    function loadAndPlay(){
+            // 加载视频 + 加载完成自动播放
+            function loadVideo(startStr) {
 
-        const start=document.getElementById("startTime").value
-        const duration=document.getElementById("duration").value
-        const channelId=document.getElementById("channelId").value
+                loading.value = true
 
-        const url=
-            `${baseUrl}?start=${encodeURIComponent(start)}&duration=${duration}&channelId=${channelId}`
+                currentStart = new Date(startStr.replace(/-/g, "/"))
 
-        player.source={
-            type:'video',
-            sources:[
-                {
-                    src:url,
-                    type:'video/mp4'
+                const url = `${baseUrl}?start=${encodeURIComponent(startStr)}&duration=${duration.value}&channelId=${channelId.value}`
+
+                player.source = {
+                    type: 'video',
+                    sources: [{
+                        src: url,
+                        type: 'video/mp4'
+                    }]
                 }
-            ]
+
+                sliderSeconds.value = getSecondsOfDay(currentStart)
+                startInput.value = startStr
+
+                player.once('loadeddata', () => {
+                    loading.value = false
+                    player.play().catch(()=>{})
+                })
+            }
+
+            // 手动播放
+            function playManual() {
+                loadVideo(startInput.value)
+            }
+
+            // 拖拽开始
+            function onDragStart() {
+                isDragging = true
+                player.pause()
+            }
+
+            // 拖拽结束
+            function onDragEnd() {
+                if (!isDragging) return
+                isDragging = false
+                const date = new Date(dateStr.value + " 00:00:00")
+                date.setSeconds(sliderSeconds.value)
+                const start = formatDate(date)
+                loadVideo(start)
+            }
+
+            function onSliderInput() {}
+
+            // 初始化
+            onMounted(() => {
+                player = new Plyr("#player", {
+                    controls: []
+                })
+
+                // 播放进度同步时间轴
+                player.on("timeupdate", () => {
+                    if (isDragging || !currentStart) return
+                    const sec = getSecondsOfDay(currentStart) + Math.floor(player.currentTime)
+                    sliderSeconds.value = sec
+                })
+
+                // 播放完毕自动下一段
+                player.on("ended", () => {
+                    if (!currentStart) return
+                    const next = new Date(currentStart)
+                    next.setSeconds(next.getSeconds() + duration.value)
+                    const start = formatDate(next)
+                    loadVideo(start)
+                })
+
+                loadVideo(startInput.value)
+            })
+
+            return {
+                duration,
+                channelId,
+                sliderSeconds,
+                startInput,
+                dateStr,
+                loading,
+                secondsToTime,
+                playManual,
+                onDragStart,
+                onDragEnd,
+                onSliderInput
+            }
         }
-
-        // 视频加载完成后自动播放
-        player.once('ready',()=>{
-            player.play()
-        })
-
-    }
-
-
-    player.on('ended',()=>{
-
-        if(!autoLoop) return
-
-        const duration=parseInt(document.getElementById("duration").value)
-
-        let start=document.getElementById("startTime").value
-
-        const date=new Date(start.replace(/-/g,"/"))
-
-        date.setSeconds(date.getSeconds()+duration)
-
-        const newStart=formatDate(date)
-
-        document.getElementById("startTime").value=newStart
-
-        loadAndPlay()
-
-    })
-
-
-    function formatDate(date){
-
-        const y=date.getFullYear()
-        const m=String(date.getMonth()+1).padStart(2,'0')
-        const d=String(date.getDate()).padStart(2,'0')
-
-        const h=String(date.getHours()).padStart(2,'0')
-        const mi=String(date.getMinutes()).padStart(2,'0')
-        const s=String(date.getSeconds()).padStart(2,'0')
-
-        return `${y}-${m}-${d} ${h}:${mi}:${s}`
-
-    }
-
-
-    function downloadVideo(){
-
-        const start=document.getElementById("startTime").value
-        const duration=document.getElementById("duration").value
-        const channelId=document.getElementById("channelId").value
-
-        const url=
-            `${baseUrl}?start=${encodeURIComponent(start)}&duration=${duration}&channelId=${channelId}`
-
-        const a=document.createElement("a")
-        a.href=url
-        a.download=""
-        a.click()
-
-    }
-
+    }).mount("#app")
 </script>
 
 </body>
+
 </html>
