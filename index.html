@@ -342,6 +342,7 @@
                         </label>
                     </div>
                 </div>
+                <!-- 起始时间行 -->
                 <div class="form-row">
                     <div class="form-col">
                         <label>起始时间
@@ -349,9 +350,10 @@
                         </label>
                     </div>
                     <div class="form-col">
-                        <button @click="">09:30</button>
+                        <button @click="setTimePart('start', 9, 30)">09:30</button>
                     </div>
                 </div>
+                <!-- 结束时间行 -->
                 <div class="form-row">
                     <div class="form-col">
                         <label>结束时间
@@ -359,8 +361,8 @@
                         </label>
                     </div>
                     <div class="form-col">
-                        <button @click="" style="margin-right: 4px;">09:30</button>
-                        <button @click="">11:30</button>
+                        <button @click="setTimePart('end', 9, 30)" style="margin-right: 4px;">09:30</button>
+                        <button @click="setTimePart('end', 11, 30)">11:30</button>
                     </div>
                 </div>
 
@@ -609,6 +611,32 @@
                 }
             },
             methods: {
+                /**
+                 * 设置时间的时分部分
+                 * @param {string} type - 类型：start（起始时间）/ end（结束时间）
+                 * @param {number} hour - 小时（0-23）
+                 * @param {number} minute - 分钟（0-59）
+                 */
+                setTimePart(type, hour, minute) {
+                    // 确定要修改的时间字段
+                    const timeKey = type === 'start' ? 'startTime' : 'endTime';
+                    // 获取当前时间值（如：2025-01-01T00:00）
+                    let currentTime = this[timeKey];
+                    if (!currentTime) return;
+
+                    // 拆分日期和时间部分
+                    const [datePart, timePart] = currentTime.split('T');
+                    // 格式化时分（补零，确保两位）
+                    const formattedHour = hour.toString().padStart(2, '0');
+                    const formattedMinute = minute.toString().padStart(2, '0');
+                    // 拼接新的时间字符串
+                    const newTime = `${datePart}T${formattedHour}:${formattedMinute}`;
+
+                    // 更新绑定的时间值
+                    this[timeKey] = newTime;
+                    // 同步更新缓存
+                    this.saveCache();
+                },
                 handleKeyDown(e) {
                     if (e.key !== 'Delete') return;
                     this.deleteShapeUnderCursor();
