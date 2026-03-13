@@ -290,10 +290,24 @@
                     <button style="color: red" @click="clearAllOverlays">清除图形</button>
                 </div>
 
-                <label>线段工具（按DEL删除图形）</label>
+                <label>趋势线工具</label>
                 <div class="btn-group">
-                    <button :class="{active: activeTool==='trendline'}" @click="setTool('trendline')">趋势线</button>
-                    <button :class="{active: activeTool==='rr'}" @click="setTool('rr')">盈亏比</button>
+                    <button :class="{active: activeTool==='trendline'}" @click="setTool('trendline')">
+                        趋势线
+                    </button>
+                    <button :class="{active: activeTrendColor==='#22c55e'}" style="color:#22c55e"
+                        @click="activeTrendColor='#22c55e'">
+                        绿色
+                    </button>
+                    <button :class="{active: activeTrendColor==='#ef4444'}" style="color:#ef4444"
+                        @click="activeTrendColor='#ef4444'">
+                        红色
+                    </button>
+                </div>
+
+                <label>盈亏比工具</label>
+                <div class="btn-group">
+                    <button :class="{active: activeTool==='rr'}" @click="setTool('rr')">风险盈亏比</button>
                     <button :class="{active: activeTool==='mm'}" @click="setTool('mm')">MM</button>
                 </div>
 
@@ -509,6 +523,8 @@
                     overlayDragging: false,
                     overlayTempPoint: null,
                     trendLines: [],        // 趋势线数据
+                    activeTrendColor: '#22c55e',
+
                     activeTool: 'cursor',  // cursor | trendline | rect | rr
                     rects: [],             // 矩形数据
                     activeRectColor: '#a7eec0',
@@ -1163,7 +1179,6 @@
                 renderOverlay() {
                     const svg = this.$refs.overlayEl;
                     if (!svg || !this.chart || !this.candleSeries) return;
-
                     // 清空现有内容
                     svg.innerHTML = '';
 
@@ -1285,10 +1300,25 @@
                         el.setAttribute('y1', y1);
                         el.setAttribute('x2', x2);
                         el.setAttribute('y2', y2);
-                        el.setAttribute('stroke', '#2962ff');
+                        el.setAttribute('marker-end', 'url(#trendArrow)');
                         el.setAttribute('stroke-width', '2');
+                        el.setAttribute('stroke', line.color || '#22c55e');
 
                         svg.appendChild(el);
+                        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+                        const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+                        marker.setAttribute('id', 'trendArrow');
+                        marker.setAttribute('markerWidth', '8');
+                        marker.setAttribute('markerHeight', '8');
+                        marker.setAttribute('refX', '6');
+                        marker.setAttribute('refY', '3');
+                        marker.setAttribute('orient', 'auto');
+                        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        path.setAttribute('d', 'M0,0 L6,3 L0,6 Z');
+                        path.setAttribute('fill', line.color || '#22c55e');
+                        marker.appendChild(path);
+                        defs.appendChild(marker);
+                        svg.appendChild(defs);
                     });
                 },
                 /**
@@ -1424,7 +1454,7 @@
                             el.setAttribute('y1', y1);
                             el.setAttribute('x2', x2);
                             el.setAttribute('y2', y2);
-                            el.setAttribute('stroke', '#2962ff');
+                            el.setAttribute('stroke', this.activeTrendColor || '#22c55e');
                             el.setAttribute('stroke-width', '2');
                             el.setAttribute('stroke-dasharray', '5,5');
                             svg.appendChild(el);
@@ -1846,7 +1876,6 @@
                         if (this.rectTemp.t1 !== this.rectTemp.t2 && this.rectTemp.p1 !== this.rectTemp.p2) {
                             this.rectTemp.color = this.activeRectColor;
                             this.rects.push({ ...this.rectTemp });
-                            // this.updateUrlParams();
                         }
                         this.rectTemp = null;
                         this.renderOverlay();
@@ -1861,7 +1890,6 @@
                         if (this.rrTemp.entryTime !== this.rrTemp.stopTime &&
                             Math.abs(this.rrTemp.entryPrice - this.rrTemp.stopPrice) > 0) {
                             this.rrTools.push({ ...this.rrTemp });
-                            // this.updateUrlParams();
                             this.showOperateMsg('盈亏比工具绘制完成，已自动生成1/2/3倍目标位', true);
                         }
                         this.rrTemp = null;
@@ -1877,7 +1905,6 @@
                         if (this.mmTemp.entryTime !== this.mmTemp.stopTime &&
                             Math.abs(this.mmTemp.entryPrice - this.mmTemp.stopPrice) > 0) {
                             this.mmTools.push({ ...this.mmTemp });
-                            // this.updateUrlParams();
                             this.showOperateMsg('盈亏比工具绘制完成，已自动生成1/2/3倍目标位', true);
                         }
                         this.mmTemp = null;
@@ -1910,9 +1937,9 @@
                             t1: this.overlayTempPoint.t,
                             p1: this.overlayTempPoint.p,
                             t2: time,
-                            p2: price
+                            p2: price,
+                            color: this.activeTrendColor
                         });
-                        // this.updateUrlParams();
                         this.overlayTempPoint = null;
                         this.renderOverlay();
                     }
