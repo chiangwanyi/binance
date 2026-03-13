@@ -573,6 +573,7 @@
                 this.initCrosshairListener();
                 // 窗口大小监听
                 window.addEventListener('resize', this.handleWindowResize);
+                window.addEventListener('keydown', this.handleKeyDown);
                 // 初始化Overlay
                 this.initOverlay();
 
@@ -581,6 +582,7 @@
                 window.removeEventListener('resize', this.handleWindowResize);
                 // 移除overlay的resize监听
                 window.removeEventListener('resize', this.resizeOverlay);
+                window.removeEventListener('keydown', this.handleKeyDown);
                 // 移除图表监听
                 if (this.chart) {
                     this.chart.timeScale().unsubscribeVisibleTimeRangeChange(this.renderOverlay);
@@ -605,6 +607,138 @@
                 }
             },
             methods: {
+                handleKeyDown(e) {
+                    if (e.key !== 'Delete') return;
+                    this.deleteShapeUnderCursor();
+                },
+                pointToSegmentDistance(px, py, x1, y1, x2, y2) {
+
+                    const dx = x2 - x1;
+                    const dy = y2 - y1;
+
+                    if (dx === 0 && dy === 0) {
+                        return Math.hypot(px - x1, py - y1);
+                    }
+
+                    const t = (
+                        (px - x1) * dx +
+                        (py - y1) * dy
+                    ) / (dx * dx + dy * dy);
+
+                    const clampedT = Math.max(0, Math.min(1, t));
+
+                    const projX = x1 + clampedT * dx;
+                    const projY = y1 + clampedT * dy;
+
+                    return Math.hypot(px - projX, py - projY);
+                },
+                deleteShapeUnderCursor() {
+
+                    const time = this.chart.timeScale().coordinateToTime(this.currentMouseX);
+                    const price = this.candleSeries.coordinateToPrice(this.currentMouseY);
+
+                    if (!time || price == null) return;
+
+                    const thresholdPrice = 0.002 * price;   // 价格容忍
+                    const thresholdTime = 60 * 5;           // 时间容忍(5分钟)
+
+                    if (this.activeTool === 'trendline') {
+                        // ===== 删除趋势线（鼠标到线段最短距离）=====
+
+                        const mouseX = this.currentMouseX;
+                        const mouseY = this.currentMouseY;
+
+                        let minDist = Infinity;
+                        let deleteIndex = -1;
+
+                        for (let i = 0; i < this.trendLines.length; i++) {
+
+                            const line = this.trendLines[i];
+
+                            // 转换为屏幕坐标
+                            const x1 = this.chart.timeScale().timeToCoordinate(line.t1);
+                            const y1 = this.candleSeries.priceToCoordinate(line.p1);
+
+                            const x2 = this.chart.timeScale().timeToCoordinate(line.t2);
+                            const y2 = this.candleSeries.priceToCoordinate(line.p2);
+
+                            if (x1 == null || x2 == null || y1 == null || y2 == null) continue;
+
+                            const dist = this.pointToSegmentDistance(
+                                mouseX, mouseY,
+                                x1, y1,
+                                x2, y2
+                            );
+
+                            if (dist < minDist) {
+                                minDist = dist;
+                                deleteIndex = i;
+                            }
+                        }
+
+                        // 最大允许距离（像素）
+                        const MAX_DISTANCE = 10;
+
+                        if (deleteIndex !== -1 && minDist < MAX_DISTANCE) {
+                            this.trendLines.splice(deleteIndex, 1);
+                            this.renderOverlay();
+                        }
+                    }
+
+                    if (this.activeTool === 'rect') {
+                        // ===== 2 删除矩形 =====
+                        for (let i = 0; i < this.rects.length; i++) {
+
+                            const r = this.rects[i];
+
+                            const minT = Math.min(r.t1, r.t2);
+                            const maxT = Math.max(r.t1, r.t2);
+
+                            const minP = Math.min(r.p1, r.p2);
+                            const maxP = Math.max(r.p1, r.p2);
+
+                            if (time >= minT && time <= maxT && price >= minP && price <= maxP) {
+                                this.rects.splice(i, 1);
+                                this.renderOverlay();
+                                return;
+                            }
+                        }
+                    }
+
+                    if (this.activeTool === 'rr') {
+                        // ===== 3 删除 RR 工具 =====
+                        for (let i = 0; i < this.rrTools.length; i++) {
+
+                            const rr = this.rrTools[i];
+
+                            if (
+                                Math.abs(rr.entryTime - time) < thresholdTime &&
+                                Math.abs(rr.entryPrice - price) < thresholdPrice
+                            ) {
+                                this.rrTools.splice(i, 1);
+                                this.renderOverlay();
+                                return;
+                            }
+                        }
+                    }
+
+                    if (this.activeTool === 'mm') {
+                        // ===== 4 删除 MM 工具 =====
+                        for (let i = 0; i < this.mmTools.length; i++) {
+
+                            const mm = this.mmTools[i];
+
+                            if (
+                                Math.abs(mm.entryTime - time) < thresholdTime &&
+                                Math.abs(mm.entryPrice - price) < thresholdPrice
+                            ) {
+                                this.mmTools.splice(i, 1);
+                                this.renderOverlay();
+                                return;
+                            }
+                        }
+                    }
+                },
                 async shareChart() {
                     const state = {
                         symbol: this.symbol,
