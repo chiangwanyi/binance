@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>炒币吗？</title>
-    <script src="https://unpkg.com/vue@3"></script>
-    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="./js/vue.global.js"></script>
+    <script src="./js/lightweight-charts.standalone.production.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -1150,11 +1150,13 @@
                     this.rects = [];
                     this.rrTools = [];
                     this.mmTools = [];
+                    this.textBoxes = [];
 
                     this.overlayTempPoint = null;
                     this.rectTemp = null;
                     this.rrTemp = null;
                     this.mmTemp = null;
+                    this.textBoxTemp = null;
 
                     this.renderOverlay();
                     this.showOperateMsg('已清除所有绘图元素', true);
@@ -1315,7 +1317,7 @@
                         marker.setAttribute('orient', 'auto');
                         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                         path.setAttribute('d', 'M0,0 L6,3 L0,6 Z');
-                        path.setAttribute('fill', line.color || '#22c55e');
+                        path.setAttribute('fill', '#ffffff');
                         marker.appendChild(path);
                         defs.appendChild(marker);
                         svg.appendChild(defs);
