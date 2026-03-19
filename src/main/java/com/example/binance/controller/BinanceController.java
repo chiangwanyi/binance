@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoField;
+import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -213,7 +214,7 @@ public class BinanceController {
                             return false;
                         }
 
-                        // 2. 过滤指定日期（MM-dd）
+                        // 2. 过滤固定节假日（MM-dd）
                         String mmDd = String.format("%02d-%02d",
                                 etTime.get(ChronoField.MONTH_OF_YEAR),
                                 etTime.get(ChronoField.DAY_OF_MONTH));
@@ -221,7 +222,13 @@ public class BinanceController {
                             return false;
                         }
 
-                        // 3. 过滤交易时段外的K线
+                        // 3. 过滤 11月第四个星期四（感恩节）
+                        LocalDate thanksgiving = getThanksgiving(etTime.getYear());
+                        if (etTime.toLocalDate().equals(thanksgiving)) {
+                            return false;
+                        }
+
+                        // 4. 过滤交易时段外的K线
                         int totalMin = etTime.getHour() * 60 + etTime.getMinute();
                         return totalMin >= START_TOTAL_MIN && totalMin <= END_TOTAL_MIN;
                     })
@@ -236,6 +243,14 @@ public class BinanceController {
         });
 
         return AjaxResult.success(values);
+    }
+
+    /**
+     * 计算指定年份的感恩节：11月第四个星期四
+     */
+    private LocalDate getThanksgiving(int year) {
+        return LocalDate.of(year, 11, 1)
+                .with(TemporalAdjusters.dayOfWeekInMonth(4, DayOfWeek.THURSDAY));
     }
 
 
