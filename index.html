@@ -396,6 +396,7 @@
                 <div class="btn-group">
                     <button @click="loadKlineByDateRange(0, 0)" style="background-color: #29c15e;">加载数据</button>
                     <button @click="reDownloadKlineByDateRange()">刷新数据</button>
+                    <button @click="runBacktest()">回测策略</button>
                 </div>
 
                 <!-- 位移按钮组 -->
@@ -557,6 +558,12 @@
                     editingTextBoxIndex: -1,
                     isEditingText: false,
 
+                    // ===== 回测相关  =====
+                    yesterdayHighestPrice: 0,   // 昨日最高价
+                    yesterdayLowestPrice: 0,    // 昨日最低价
+                    todayFirstKHighPrice: 0,    // 今日#1K线最高价
+                    todayFirstKLowPrice: 0,     // 今日#1K线最低价
+
                     // API基础地址
                     apiBaseUrl: 'http://localhost:8765'
                 };
@@ -647,6 +654,164 @@
                 }
             },
             methods: {
+                addTrendLine(startTime, startPrice, endTime, endPrice, color) {
+                    this.trendLines.push({
+                        t1: startTime / 1000,
+                        p1: startPrice,
+                        t2: endTime / 1000,
+                        p2: endPrice,
+                        color: color
+                    });
+                    this.renderOverlay();
+                },
+                addPriceLineV2(title, price, color) {
+                    // 新增价格线
+                    const lineSeries = this.chart.addSeries(LightweightCharts.LineSeries, {
+                        color: color,
+                        lineWidth: 2,
+                        crosshairMarkerVisible: false,
+                    });
+                    // 构造价格线数据（横向线需要相同价格的首尾数据）
+                    const priceLineData = this.buildPriceLineData(Number(price));
+                    lineSeries.setData(priceLineData);
+                    this.priceLines.push({
+                        price: Number(priceLineData),
+                        color: color,
+                        visible: true,
+                        series: lineSeries
+                    });
+                },
+                /**
+                 * K线形态识别（按你指定的大阳/大阴规则）
+                 * @param {Object} kData - { open, high, low, close, time }
+                 * @returns {string} 形态名称
+                 */
+                getKlineShape(kData) {
+                    const { open, high, low, close } = kData;
+
+                    // 1. 基础计算
+                    const totalHeight = high - low;
+                    const bodyHeight = Math.abs(close - open);
+                    const isUp = close > open;    // 阳线
+                    const isDown = close < open;  // 阴线
+                    const isDojiLine = totalHeight === 0; // 一字线
+
+                    // 极端情况：一字板
+                    if (isDojiLine) {
+                        return '一字线';
+                    }
+
+                    // 实体占比（整数）
+                    const bodyRatio = Math.round((bodyHeight / totalHeight) * 100);
+
+                    // 影线长度
+                    const upperWick = high - Math.max(open, close);
+                    const lowerWick = Math.min(open, close) - low;
+
+                    // 判断：是否没有影线（上下影线都极短，视为无）
+                    const noUpperWick = upperWick <= totalHeight * 0.02;
+                    const noLowerWick = lowerWick <= totalHeight * 0.02;
+                    const noWicks = noUpperWick && noLowerWick;
+
+                    // 2. 形态判断
+                    // ✅ 十字星
+                    if (bodyRatio <= 20) {
+                        if (isUp) return '阳线十字星';
+                        if (isDown) return '阴线十字星';
+                        return '十字星';
+                    }
+
+                    // ✅ 长上影线
+                    if (upperWick / totalHeight >= 0.6) {
+                        return isUp ? '长上影线阳线' : '长上影线阴线';
+                    }
+
+                    // ✅ 长下影线
+                    if (lowerWick / totalHeight >= 0.6) {
+                        return isUp ? '长下影线阳线' : '长下影线阴线';
+                    }
+
+                    // ======================
+                    // 你要求的 大阳/大阴 规则
+                    // ======================
+                    const isBigCandle =
+                        (noWicks && bodyRatio >= 70) ||  // 无上下影 + 实体≥70%
+                        bodyRatio >= 90;                 // 或者 实体≥90%（直接大K线）
+
+                    if (isBigCandle) {
+                        return isUp ? '大阳线' : '大阴线';
+                    }
+
+                    // ✅ 普通阳线/阴线
+                    return isUp ? '阳线' : '阴线';
+                },
+                getCandleBodyRatio(kData) {
+                    // 解构数据（和你提供的格式完全匹配）
+                    const { open, high, low, close } = kData;
+
+                    // 1. 计算K线总高度（最高价 - 最低价）
+                    const totalHeight = high - low;
+
+                    // 2. 计算实体高度（绝对值，不分涨跌）
+                    const bodyHeight = Math.abs(close - open);
+
+                    // 3. 边界处理：防止除以0（一字板K线）
+                    if (totalHeight === 0) {
+                        return 0.00;
+                    }
+
+                    // 4. 计算占比，保留整数
+                    return Math.round((bodyHeight / totalHeight) * 100);
+                },
+                isUpCandle(k) {
+                    return k.close > k.open;
+                },
+                isDownCandle(k) {
+                    return k.close < k.open;
+                },
+                printKDataInfo(k) {
+                    return `【open: ${k.open}, close: ${k.close}, high: ${k.high}, low: ${k.low}】`;
+                },
+                runBacktest() {
+                    const data = this.currentKlineData;
+                    // if (!data || data.length < 81) {
+                    //     console.log("数据不够")
+                    //     return;
+                    // }
+                    // === 转换数据格式 ===
+                    const candles = data.map(k => ({
+                        open: parseFloat(k.openPrice),
+                        high: parseFloat(k.highPrice),
+                        low: parseFloat(k.lowPrice),
+                        close: parseFloat(k.closePrice),
+                        time: k.openTime
+                    }));
+                    this.yesterdayHighestPrice = -1;
+                    this.yesterdayLowestPrice = 99999999;
+                    for (let i = 1; i <= candles.length; i++) {
+                        let ck = candles[i - 1];
+                        if (i < 82) {
+                            this.yesterdayHighestPrice = Math.max(this.yesterdayHighestPrice, ck.high);
+                            this.yesterdayLowestPrice = Math.min(this.yesterdayLowestPrice, ck.low);
+                        }
+                        if (i === 81) {
+                            this.addPriceLineV2("昨日最高价", this.yesterdayHighestPrice, "green")
+                            this.addPriceLineV2("昨日最低价", this.yesterdayLowestPrice, "red")
+                            console.log(`昨天最高价：${this.yesterdayHighestPrice}，昨日最低价：${this.yesterdayLowestPrice}`)
+                        }
+                        if (i >= 82) {
+                            // 今天的#1 k线
+                            if (i === 82) {
+                                this.todayFirstKHighPrice = ck.high;
+                                this.todayFirstKLowPrice = ck.low;
+                                console.log(`今日#${i - 82 + 1}：收${this.getKlineShape(ck)}，实体部分占比${this.getCandleBodyRatio(ck)}%，${this.printKDataInfo(ck)}`)
+                            } else {
+                                console.log(`今日#${i - 82 + 1}：收${this.getKlineShape(ck)}，实体部分占比${this.getCandleBodyRatio(ck)}%，${this.printKDataInfo(ck)}`)
+                            }
+                        }
+
+                    }
+                },
                 /**
                  * 设置时间的时分部分
                  * @param {string} type - 类型：start（起始时间）/ end（结束时间）
@@ -1197,7 +1362,7 @@
                     this.renderMMTools(svg);
                     // 渲染临时绘制的元素
                     this.renderTempElements(svg);
-                    // 渲染 K 线序号（Bar Count）
+                    // // 渲染 K 线序号（Bar Count）
                     this.renderBarCount(svg);
                 },
                 renderTextBoxes(svg) {
