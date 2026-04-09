@@ -362,6 +362,7 @@
                             <select v-model="interval">
                                 <option value="1m">1m</option>
                                 <option value="5m">5m</option>
+                                <option value="30m">30m</option>
                                 <option value="1h">1h</option>
                             </select>
                         </label>
@@ -489,7 +490,7 @@
 
     <script>
         const STORAGE_KEY = 'BTCUSDT_5M_KLINE_TIME_RANGE';
-        const { createApp } = Vue
+        const {createApp} = Vue
 
         createApp({
             data() {
@@ -601,7 +602,7 @@
                     const cache = localStorage.getItem(STORAGE_KEY);
                     if (cache) {
                         try {
-                            const { startTime, endTime, interval, location, symbol } = JSON.parse(cache);
+                            const {startTime, endTime, interval, location, symbol} = JSON.parse(cache);
                             if (startTime) this.startTime = startTime;
                             if (endTime) this.endTime = endTime;
                             if (interval) this.interval = interval;
@@ -687,7 +688,7 @@
                  * @returns {string} 形态名称
                  */
                 getKlineShape(kData) {
-                    const { open, high, low, close } = kData;
+                    const {open, high, low, close} = kData;
 
                     // 1. 基础计算
                     const totalHeight = high - low;
@@ -747,7 +748,7 @@
                 },
                 getCandleBodyRatio(kData) {
                     // 解构数据（和你提供的格式完全匹配）
-                    const { open, high, low, close } = kData;
+                    const {open, high, low, close} = kData;
 
                     // 1. 计算K线总高度（最高价 - 最低价）
                     const totalHeight = high - low;
@@ -1011,7 +1012,7 @@
                         `${this.apiBaseUrl}/api/chart`,
                         {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify(state)
                         }
                     );
@@ -1141,12 +1142,12 @@
                     // 创建图表实例
                     this.chart = LightweightCharts.createChart(this.$refs.chartEl, {
                         layout: {
-                            background: { color: this.theme === 'dark' ? '#0f172a' : '#ffffff' },
+                            background: {color: this.theme === 'dark' ? '#0f172a' : '#ffffff'},
                             textColor: this.theme === 'dark' ? '#d1d5db' : '#111827'
                         },
                         grid: {
-                            vertLines: { color: this.theme === 'dark' ? '#1f2937' : '#e5e7eb' },
-                            horzLines: { color: this.theme === 'dark' ? '#1f2937' : '#e5e7eb' }
+                            vertLines: {color: this.theme === 'dark' ? '#1f2937' : '#e5e7eb'},
+                            horzLines: {color: this.theme === 'dark' ? '#1f2937' : '#e5e7eb'}
                         },
                         timeScale: {
                             timeVisible: true,
@@ -1246,7 +1247,7 @@
                         this.showOperateMsg('价格线添加成功', true);
                     }
                     // 重置新增表单
-                    this.newPriceLine = { title: '', price: '', color: '#a7eec0' };
+                    this.newPriceLine = {title: '', price: '', color: '#a7eec0'};
                 },
 
                 // 构建价格线数据（横向线）
@@ -1258,8 +1259,8 @@
 
                     // 返回横向线数据（首尾两点确定一条横线）
                     return [
-                        { time: visibleTimeRange.from, value: price },
-                        { time: visibleTimeRange.to, value: price }
+                        {time: visibleTimeRange.from, value: price},
+                        {time: visibleTimeRange.to, value: price}
                     ];
                 },
 
@@ -1274,7 +1275,7 @@
                 togglePriceLineVisible(index) {
                     const line = this.priceLines[index];
                     line.visible = !line.visible;
-                    line.series.applyOptions({ visible: line.visible });
+                    line.series.applyOptions({visible: line.visible});
                 },
 
                 // 编辑价格线
@@ -2043,7 +2044,7 @@
                         // 确保矩形有实际大小
                         if (this.rectTemp.t1 !== this.rectTemp.t2 && this.rectTemp.p1 !== this.rectTemp.p2) {
                             this.rectTemp.color = this.activeRectColor;
-                            this.rects.push({ ...this.rectTemp });
+                            this.rects.push({...this.rectTemp});
                         }
                         this.rectTemp = null;
                         this.renderOverlay();
@@ -2057,7 +2058,7 @@
                         // 确保盈亏比矩形有实际大小
                         if (this.rrTemp.entryTime !== this.rrTemp.stopTime &&
                             Math.abs(this.rrTemp.entryPrice - this.rrTemp.stopPrice) > 0) {
-                            this.rrTools.push({ ...this.rrTemp });
+                            this.rrTools.push({...this.rrTemp});
                             this.showOperateMsg('盈亏比工具绘制完成，已自动生成1/2/3倍目标位', true);
                         }
                         this.rrTemp = null;
@@ -2072,7 +2073,7 @@
                         // 确保盈亏比矩形有实际大小
                         if (this.mmTemp.entryTime !== this.mmTemp.stopTime &&
                             Math.abs(this.mmTemp.entryPrice - this.mmTemp.stopPrice) > 0) {
-                            this.mmTools.push({ ...this.mmTemp });
+                            this.mmTools.push({...this.mmTemp});
                             this.showOperateMsg('盈亏比工具绘制完成，已自动生成1/2/3倍目标位', true);
                         }
                         this.mmTemp = null;
@@ -2098,7 +2099,7 @@
 
                     if (!this.overlayTempPoint) {
                         // 第一个点
-                        this.overlayTempPoint = { t: time, p: price };
+                        this.overlayTempPoint = {t: time, p: price};
                     } else {
                         // 第二个点，完成趋势线绘制
                         this.trendLines.push({
@@ -2119,7 +2120,7 @@
                     const t = this.chart.timeScale().coordinateToTime(e.offsetX);
                     const p = this.candleSeries.coordinateToPrice(e.offsetY);
                     if (!t || p == null) return;
-                    this.rectTemp = { t1: t, p1: p, t2: t, p2: p };
+                    this.rectTemp = {t1: t, p1: p, t2: t, p2: p};
                 },
                 /**
                  * 处理盈亏比按下事件
@@ -2223,9 +2224,11 @@
                         // 移动开始时间
                         if (targetTime === -1) {
                             if (this.interval === '1m') {
-                                this.startTime = new Date(new Date(Date.parse(this.startTime) + direction * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
+                                this.startTime = new Date(new Date(Date.parse(this.startTime) + direction * 1 * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
                             } else if (this.interval === '5m') {
                                 this.startTime = new Date(new Date(Date.parse(this.startTime) + direction * 5 * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
+                            } else if (this.interval === '30m') {
+                                this.startTime = new Date(new Date(Date.parse(this.startTime) + direction * 30 * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
                             } else if (this.interval === '1h') {
                                 this.startTime = new Date(new Date(Date.parse(this.startTime) + direction * 60 * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
                             }
@@ -2233,9 +2236,11 @@
                         // 移动结束时间
                         else if (targetTime === 1) {
                             if (this.interval === '1m') {
-                                this.endTime = new Date(new Date(Date.parse(this.endTime) + direction * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
+                                this.endTime = new Date(new Date(Date.parse(this.endTime) + direction * 1 * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
                             } else if (this.interval === '5m') {
                                 this.endTime = new Date(new Date(Date.parse(this.endTime) + direction * 5 * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
+                            } else if (this.interval === '30m') {
+                                this.endTime = new Date(new Date(Date.parse(this.endTime) + direction * 30 * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
                             } else if (this.interval === '1h') {
                                 this.endTime = new Date(new Date(Date.parse(this.endTime) + direction * 60 * 60 * 1000).getTime() - new Date().getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
                             }
@@ -2381,7 +2386,7 @@
                  */
                 handleWindowResize() {
                     if (!this.chart || !this.$refs.chartEl) return;
-                    this.chart.applyOptions({ height: this.$refs.chartEl.clientHeight });
+                    this.chart.applyOptions({height: this.$refs.chartEl.clientHeight});
                     if (this.currentKlineData.length > 0) this.chart.timeScale().fitContent();
                 }
             }
