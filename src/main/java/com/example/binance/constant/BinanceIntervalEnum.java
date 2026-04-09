@@ -1,4 +1,4 @@
-package com.example.binance.config;
+package com.example.binance.constant;
 
 import lombok.Getter;
 

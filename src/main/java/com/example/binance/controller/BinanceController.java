@@ -3,7 +3,7 @@ package com.example.binance.controller;
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.util.StrUtil;
 import com.example.binance.config.AjaxResult;
-import com.example.binance.config.BinanceIntervalEnum;
+import com.example.binance.constant.BinanceIntervalEnum;
 import com.example.binance.entity.KlineEntity;
 import com.example.binance.service.KlineService;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,5 +1,6 @@
 package com.example.binance.util;
 
+import com.example.binance.constant.KLineDirection;
 import com.example.binance.entity.KlineEntity;
 
 import java.math.BigDecimal;
@@ -18,6 +19,7 @@ public class KlineUtil {
 
     /**
      * 计算EMA20，并直接赋值给 原始KlineEntity 的 ema20 字段
+     *
      * @param klineList K线列表（必须按时间【正序】排列）
      */
     public static void calculateEma20(List<KlineEntity> klineList) {
@@ -61,5 +63,21 @@ public class KlineUtil {
             return BigDecimal.ZERO;
         }
         return new BigDecimal(price.trim());
+    }
+
+    public static KLineDirection getKLineDirection(KlineEntity entity) {
+        BigDecimal close = entity.getClosePriceValue();
+        BigDecimal open = entity.getOpenPriceValue();
+        if (greaterThan(close, open)) return KLineDirection.Bull;
+        if (lessThan(close, open)) return KLineDirection.Bear;
+        return KLineDirection.Doji;
+    }
+
+    public static boolean greaterThan(BigDecimal a, BigDecimal b) {
+        return a.compareTo(b) > 0;
+    }
+
+    public static boolean lessThan(BigDecimal a, BigDecimal b) {
+        return a.compareTo(b) < 0;
     }
 }

@@ -50,4 +50,20 @@ public class KlineEntity {
                 ", EMA20='" + ema20 + '\'' +
                 '}';
     }
+
+    public BigDecimal getHighPriceValue() {
+        return new BigDecimal(highPrice);
+    }
+
+    public BigDecimal getLowPriceValue() {
+        return new BigDecimal(lowPrice);
+    }
+
+    public BigDecimal getClosePriceValue() {
+        return new BigDecimal(closePrice);
+    }
+
+    public BigDecimal getOpenPriceValue() {
+        return new BigDecimal(openPrice);
+    }
 }

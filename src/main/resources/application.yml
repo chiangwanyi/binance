@@ -19,6 +19,9 @@ mybatis:
     # log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # 注释或删除
 
 logging:
+  # 极简控制台格式
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5p %-15thread %logger{20} : %msg%n"
   level:
     org.springframework.jdbc.datasource: WARN
     org.mybatis.spring: WARN

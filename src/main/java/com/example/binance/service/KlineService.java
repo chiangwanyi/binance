@@ -2,7 +2,7 @@ package com.example.binance.service;
 
 import cn.hutool.core.date.DateTime;
 import com.example.binance.api.BinanceFApi;
-import com.example.binance.config.BinanceIntervalEnum;
+import com.example.binance.constant.BinanceIntervalEnum;
 import com.example.binance.entity.KlineEntity;
 import com.example.binance.mapper.KlineBaseMapper;
 import com.example.binance.mapper.btcusdt.BTCUSDT1hPMapper;

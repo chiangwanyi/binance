@@ -3,9 +3,11 @@ package com.example.binance.task;
 import cn.hutool.core.date.DateField;
 import cn.hutool.core.date.DatePattern;
 import cn.hutool.core.date.DateTime;
-import com.example.binance.config.BinanceIntervalEnum;
+import com.example.binance.constant.BinanceIntervalEnum;
+import com.example.binance.constant.KLineDirection;
 import com.example.binance.entity.KlineEntity;
 import com.example.binance.service.KlineService;
+import com.example.binance.util.KlineUtil;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +18,8 @@ import java.math.RoundingMode;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import static com.example.binance.constant.KLineDirection.Bull;
 
 @Component
 @Slf4j
@@ -47,9 +51,33 @@ public class BacktestTask {
                     List<KlineEntity> klineData = klineService.getKlineDataBySymbolAndInterval("BTCUSDT", interval, s, e, false);
                     log.info("获取【{}】K线数据，时间段：[{}开盘] -- [{}收盘]，共{}条",interval.getInterval(), s, e, klineData.size());
 
-                    KlineEntity last = klineData.getLast();
-                    log.info("最新K线：{}", last);
-                    TimeUnit.HOURS.sleep(1);
+                    KlineEntity lastK = klineData.getLast();
+                    log.info("最新K线：{}", lastK);
+
+                    // 最新K线方向
+                    KLineDirection direction = KlineUtil.getKLineDirection(lastK);
+                    switch (direction) {
+                        // 阳线
+                        case Bull -> {
+                            boolean a = KlineUtil.lessThan(lastK.getOpenPriceValue(), lastK.getEma20());
+                            boolean b = KlineUtil.greaterThan(lastK.getClosePriceValue(), lastK.getEma20());
+                            if (a && b) {
+                                log.info("最新【{}】K线[open:{}, close:{}, ema20:{}]，向上穿过EMA20，尝试做多", Bull.getDesc(), lastK.getOpenPrice(), lastK.getClosePrice(), lastK.getEma20());
+                                System.in.read();
+                            }
+                        }
+                        // 阴线
+                        case Bear -> {
+                            boolean a = KlineUtil.greaterThan(lastK.getOpenPriceValue(), lastK.getEma20());
+                            boolean b = KlineUtil.lessThan(lastK.getClosePriceValue(), lastK.getEma20());
+                            if (a && b) {
+                                log.info("最新【{}】K线[open:{}, close:{}, ema20:{}]，向下穿过EMA20，尝试做空", Bull.getDesc(), lastK.getOpenPrice(), lastK.getClosePrice(), lastK.getEma20());
+                                System.in.read();
+                            }
+                        }
+                    }
+
+
                 }
             } catch (Exception e) {
                 log.error("回测异常", e);

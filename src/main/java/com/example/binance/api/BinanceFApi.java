@@ -3,7 +3,7 @@ package com.example.binance.api;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONUtil;
-import com.example.binance.config.BinanceIntervalEnum;
+import com.example.binance.constant.BinanceIntervalEnum;
 import com.example.binance.entity.KlineEntity;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
