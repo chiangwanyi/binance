@@ -71,7 +71,8 @@ public class BinanceFApi {
                     k.getStr(7),
                     k.getInt(8),
                     k.getStr(9),
-                    k.getStr(10)
+                    k.getStr(10),
+                    null
             );
             result.add(entity);
         }

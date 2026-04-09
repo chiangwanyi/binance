@@ -25,27 +25,35 @@ public class BacktestTask {
 
     @PostConstruct
     public void tryTest() throws InterruptedException {
-        DateTime start = DateTime.of("2026-04-01 00:00", DatePattern.NORM_DATETIME_MINUTE_PATTERN);
-        DateTime end = DateTime.of("2026-04-07 23:00", DatePattern.NORM_DATETIME_MINUTE_PATTERN);
-        log.info("开始回测，回测从 [{}开盘] -- [{}收盘]", start, end);
+        new Thread(() -> {
+            try {
+                DateTime start = DateTime.of("2026-04-01 00:00", DatePattern.NORM_DATETIME_MINUTE_PATTERN);
+                DateTime end = DateTime.of("2026-04-07 23:00", DatePattern.NORM_DATETIME_MINUTE_PATTERN);
+                log.info("开始回测，回测从 [{}开盘] -- [{}收盘]", start, end);
 
-        BigDecimal balance = new BigDecimal("100000");
-        balance = balance.setScale(2, RoundingMode.HALF_UP);
-        log.info("初始资金：{}", balance);
+                BigDecimal balance = new BigDecimal("100000");
+                balance = balance.setScale(2, RoundingMode.HALF_UP);
+                log.info("初始资金：{}", balance);
 
-        BinanceIntervalEnum interval = BinanceIntervalEnum.M30;
-        for (DateTime current = new DateTime(start);
-             current.isBeforeOrEquals(end);
-             current = current.offsetNew(DateField.MINUTE, interval.getMinutes())) {
+                BinanceIntervalEnum interval = BinanceIntervalEnum.M30;
+                for (DateTime current = new DateTime(start);
+                     current.isBeforeOrEquals(end);
+                     current = current.offsetNew(DateField.MINUTE, interval.getMinutes())) {
 
-            log.info("当前时间：{}", current);
-            ZoneId zoneId = ZoneId.of("Asia/Shanghai");
-            DateTime s = new DateTime(current.offsetNew(DateField.HOUR_OF_DAY, -96).toLocalDateTime().atZone(zoneId).toInstant());
-            DateTime e = new DateTime(current.offsetNew(DateField.MINUTE, -interval.getMinutes()).toLocalDateTime().atZone(zoneId).toInstant());
-            List<KlineEntity> klineData = klineService.getKlineDataBySymbolAndInterval("BTCUSDT", interval, s, e, false);
-            log.info("获取【{}】K线数据，时间段：[{}开盘] -- [{}收盘]，共{}条",interval.getInterval(), s, e, klineData.size());
+                    log.info("当前时间：{}", current);
+                    ZoneId zoneId = ZoneId.of("Asia/Shanghai");
+                    DateTime s = new DateTime(current.offsetNew(DateField.HOUR_OF_DAY, -96).toLocalDateTime().atZone(zoneId).toInstant());
+                    DateTime e = new DateTime(current.offsetNew(DateField.MINUTE, -interval.getMinutes()).toLocalDateTime().atZone(zoneId).toInstant());
+                    List<KlineEntity> klineData = klineService.getKlineDataBySymbolAndInterval("BTCUSDT", interval, s, e, false);
+                    log.info("获取【{}】K线数据，时间段：[{}开盘] -- [{}收盘]，共{}条",interval.getInterval(), s, e, klineData.size());
 
-            TimeUnit.SECONDS.sleep(10);
-        }
+                    KlineEntity last = klineData.getLast();
+                    log.info("最新K线：{}", last);
+                    TimeUnit.HOURS.sleep(1);
+                }
+            } catch (Exception e) {
+                log.error("回测异常", e);
+            }
+        }).start();
     }
 }

@@ -21,6 +21,7 @@ import com.example.binance.mapper.xauusdt.XAUUSDT1hPMapper;
 import com.example.binance.mapper.xauusdt.XAUUSDT1mPMapper;
 import com.example.binance.mapper.xauusdt.XAUUSDT30mPMapper;
 import com.example.binance.mapper.xauusdt.XAUUSDT5mPMapper;
+import com.example.binance.util.KlineUtil;
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -170,10 +171,12 @@ public class KlineService {
         }
 
         // 6. 重新查询完整数据
-        return mapper.selectByTimeRange(
+        List<KlineEntity> entities = mapper.selectByTimeRange(
                 startTime.getTime(),
                 endTime.getTime()
         );
+        KlineUtil.calculateEma20(entities);
+        return entities;
     }
 
     private KlineBaseMapper getMapper(String symbol, BinanceIntervalEnum interval) {

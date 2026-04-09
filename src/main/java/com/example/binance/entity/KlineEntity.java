@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -32,13 +34,20 @@ public class KlineEntity {
     /** 主动买入成交额 */
     private String takerBuyQuoteVolume;
 
+    // 以下是后期计算的字段
+    /** EMA20 */
+    private BigDecimal ema20;
+
     @Override
     public String toString() {
         return "KlineEntity{" +
                 "开盘时间=" + DateTime.of(openTime) +
+                ", 收盘时间=" + DateTime.of(closeTime) +
                 ", 开盘价='" + openPrice + '\'' +
                 ", 最高价='" + highPrice + '\'' +
                 ", 最低价='" + lowPrice + '\'' +
-                ", 收盘价='" + closePrice + '\'' +'}';
+                ", 收盘价='" + closePrice + '\'' +
+                ", EMA20='" + ema20 + '\'' +
+                '}';
     }
 }
