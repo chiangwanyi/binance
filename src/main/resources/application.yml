@@ -4,19 +4,22 @@ server:
 spring:
   datasource:
     driver-class-name: org.sqlite.JDBC
-    # 数据库文件路径：项目运行后会在 resources 下生成 db/binance.db
     url: jdbc:sqlite:binance.db
     username:
     password:
-  # 启动时初始化表结构
   sql:
     init:
       mode: always
       schema-locations: classpath:sql/schema.sql
 
-# MyBatis 配置
 mybatis:
   type-aliases-package: com.example.binance.entity
   configuration:
-    map-underscore-to-camel-case: true  # 下划线转驼峰
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # 打印SQL日志（调试用）
+    map-underscore-to-camel-case: true
+    # log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # 注释或删除
+
+logging:
+  level:
+    org.springframework.jdbc.datasource: WARN
+    org.mybatis.spring: WARN
+    org.apache.ibatis: WARN
