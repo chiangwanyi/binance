@@ -573,6 +573,7 @@
                 // === 0. 优先从 URL 参数恢复 ===
                 const params = new URLSearchParams(window.location.search);
                 const sid = params.get('sid');
+                const links = params.get('links');
 
                 if (sid) {
                     fetch(`${this.apiBaseUrl}/api/chart/${sid}`)
@@ -597,6 +598,29 @@
                                 this.renderOverlay();
                             });
                         });
+                } else if (links) {
+                    const [symbol, startTime, endTime, interval, location, stopLossP, openP, r1, r2] = links.split('|');
+                    this.symbol = symbol;
+                    this.startTime = startTime;
+                    this.endTime = endTime;
+                    this.interval = interval;
+                    this.location = location;
+                    console.log(symbol, startTime, endTime, interval, location, stopLossP, openP, r1, r2);
+                    
+
+                    setTimeout(() => {
+                        this.loadKlineByDateRange(0, 0)
+                        setTimeout(() => {
+                            this.addPriceLineV2("止损", stopLossP, "red")
+                            this.addPriceLineV2("开仓", openP, "blue")
+                            this.addPriceLineV2("R1", r1, "yellow")
+                            this.addPriceLineV2("R2", r2, "pink")
+                        }, 300);
+                    }, 1000);
+                    this.saveCache();
+                    this.$nextTick(() => {
+                        this.renderOverlay();
+                    });
                 } else {
                     // === 1. 从浏览器缓存中恢复时间 ===
                     const cache = localStorage.getItem(STORAGE_KEY);
@@ -671,12 +695,14 @@
                         color: color,
                         lineWidth: 2,
                         crosshairMarkerVisible: false,
+                        title: title
                     });
                     // 构造价格线数据（横向线需要相同价格的首尾数据）
-                    const priceLineData = this.buildPriceLineData(Number(price));
+                    let p = Number(price)
+                    const priceLineData = this.buildPriceLineData(p);
                     lineSeries.setData(priceLineData);
                     this.priceLines.push({
-                        price: Number(priceLineData),
+                        price: p,
                         color: color,
                         visible: true,
                         series: lineSeries
