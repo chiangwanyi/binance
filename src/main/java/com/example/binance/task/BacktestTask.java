@@ -81,7 +81,7 @@ public class BacktestTask {
                         // 开仓价格（做多要稍微把价格上移保证成交）
                         BigDecimal entryPrice = signalK.getHighPriceValue().add(BigDecimal.valueOf(0.5));
                         if (KlineUtil.greaterThan(lastK.getHighPriceValue(), entryPrice)) {
-                            log.info("[#{}]K线[high:{}]，触发多仓信号[#{}]K的开仓价格{}，订单成交，【做多】", klineData.size(), signalK.getHighPrice(), klineData.size() - 1, entryPrice);
+                            log.info("【开仓做多】[#{}]K线[high:{}]，触发多仓信号[#{}]K的开仓价格{}，订单成交", klineData.size(), signalK.getHighPrice(), klineData.size() - 1, entryPrice);
                             // 做多的止损价，使用信号K的最低价（稍微下移一点）
                             BigDecimal stopLossPrice = signalK.getLowPriceValue().subtract(BigDecimal.valueOf(-0.5));
                             // 风险距离
@@ -124,7 +124,7 @@ public class BacktestTask {
                         // 开仓价格（做空要稍微把价格下移保证成交）
                         BigDecimal entryPrice = signalK.getLowPriceValue().add(BigDecimal.valueOf(-0.5));
                         if (KlineUtil.lessThan(lastK.getLowPriceValue(), entryPrice)) {
-                            log.info("[#{}]K线[low:{}]，触发空仓信号[#{}]K的开仓价格{}，订单成交，【做空】", klineData.size(), signalK.getLowPrice(), klineData.size() - 1, entryPrice);
+                            log.info("【开仓做空】[#{}]K线[low:{}]，触发空仓信号[#{}]K的开仓价格{}，订单成交", klineData.size(), signalK.getLowPrice(), klineData.size() - 1, entryPrice);
                             // 做空的止损价，使用信号K的最高价（稍微上移一点）
                             BigDecimal stopLossPrice = signalK.getHighPriceValue().subtract(BigDecimal.valueOf(0.5));
                             // 风险距离
