@@ -6,6 +6,7 @@ import cn.hutool.core.date.DateTime;
 import com.example.binance.constant.BinanceIntervalEnum;
 import com.example.binance.constant.KLineDirection;
 import com.example.binance.entity.KlineEntity;
+import com.example.binance.entity.Position;
 import com.example.binance.service.KlineService;
 import com.example.binance.util.KlineUtil;
 import jakarta.annotation.PostConstruct;
@@ -17,7 +18,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.ZoneId;
 import java.util.List;
-import java.util.Timer;
 import java.util.concurrent.TimeUnit;
 
 import static com.example.binance.constant.KLineDirection.Bear;
@@ -44,11 +44,17 @@ public class BacktestTask {
                 boolean longReady = false;
                 // 尝试做空开仓标记
                 boolean shortReady = false;
+                // 仓位
+                Position position = null;
 
-                BigDecimal balance = new BigDecimal("100000");
-                balance = balance.setScale(2, RoundingMode.HALF_UP);
+                BigDecimal balance = new BigDecimal("100");
+                String symbol = "BTCUSDT";
+                BigDecimal riskPerTrade = new BigDecimal("0.02"); // 单笔风险2%
+                BigDecimal makerFeeRates = new BigDecimal("0.0002");  // 挂单费率
+                BigDecimal takerFeeRates = new BigDecimal("0.0005");  // 吃单费率
+                int leverage = 60;
+
                 log.info("初始资金：{}", balance);
-
                 BinanceIntervalEnum interval = BinanceIntervalEnum.M30;
                 ZoneId zoneId = ZoneId.of("Asia/Shanghai");
                 DateTime s = new DateTime(new DateTime(start).offsetNew(DateField.HOUR_OF_DAY, -96).toLocalDateTime().atZone(zoneId).toInstant());
@@ -58,18 +64,42 @@ public class BacktestTask {
 
                     log.info("当前时间：{}", current);
                     DateTime e = new DateTime(current.offsetNew(DateField.MINUTE, -interval.getMinutes()).toLocalDateTime().atZone(zoneId).toInstant());
-                    List<KlineEntity> klineData = klineService.getKlineDataBySymbolAndInterval("BTCUSDT", interval, s, e, false);
+                    List<KlineEntity> klineData = klineService.getKlineDataBySymbolAndInterval(symbol, interval, s, e, false);
                     log.info("获取【{}】K线数据，时间段：[{}开盘] -- [{}收盘]，共{}条",interval.getInterval(), s, e, klineData.size());
 
                     KlineEntity lastK = klineData.getLast();
                     log.info("[#{}]K线：{}", klineData.size(), lastK);
 
+                    // 尝试做多，判断是否能触发
                     if (longReady) {
+                        // 前一根信号K线
                         KlineEntity signalK = klineData.get(klineData.size() - 2);
-                        BigDecimal entryPrice = signalK.getHighPriceValue();
+                        // 开仓价格（做多要稍微把价格上移保证成交）
+                        BigDecimal entryPrice = signalK.getHighPriceValue().add(BigDecimal.valueOf(0.5));
                         if (KlineUtil.greaterThan(lastK.getHighPriceValue(), entryPrice)) {
                             log.info("[#{}]K线[high:{}]，触发多仓信号[#{}]K的开仓价格{}，订单成交，【做多】", klineData.size(), signalK.getHighPrice(), klineData.size() - 1, entryPrice);
+                            // 做多的止损价，使用信号K的最低价（稍微下移一点）
+                            BigDecimal stopLossPrice = signalK.getLowPriceValue().subtract(BigDecimal.valueOf(0.5));
+                            // 风险距离
+                            BigDecimal riskPrice = entryPrice.subtract(stopLossPrice);
+                            // 1R止盈：1倍的风险距离
+                            BigDecimal tp1 = entryPrice.add(riskPrice);
+                            // 2R止盈：2倍的风险距离
+                            BigDecimal tp2 = entryPrice.add(riskPrice.multiply(BigDecimal.valueOf(2)));
+                            // 最大亏损
+                            BigDecimal riskLoss = balance.multiply(riskPerTrade);
+                            // 仓位
+                            BigDecimal qty = riskLoss.divide(((entryPrice.subtract(stopLossPrice).abs())
+                                    .add(entryPrice.multiply(makerFeeRates)
+                                            .add(stopLossPrice.multiply(takerFeeRates)))), 4, RoundingMode.HALF_UP);
+                            // 挂单开仓手续费
+                            BigDecimal makerFee = entryPrice.multiply(makerFeeRates).multiply(qty);
+
+                            log.info("===========>  【做多】开仓参数：开仓价格{}，止损平仓价格{}，最大亏损{}，开仓手续费{}，仓位{}  <===========", entryPrice, stopLossPrice, riskLoss, makerFee, qty);
                             System.in.read();
+                            position = Position.builder()
+                                    .type("long")
+                                    .entry(entryPrice).build();
                         } else {
                             log.info("[#{}]K线[high:{}]，未触发多仓信号[#{}]K的开仓价格{}", klineData.size(), signalK.getHighPrice(), klineData.size() - 1, entryPrice);
                             longReady = false;
@@ -81,32 +111,33 @@ public class BacktestTask {
                         BigDecimal entryPrice = signalK.getLowPriceValue();
                         if (KlineUtil.lessThan(lastK.getLowPriceValue(), entryPrice)) {
                             log.info("[#{}]K线[low:{}]，触发空仓信号[#{}]K的开仓价格{}，订单成交，【做空】", klineData.size(), signalK.getLowPrice(), klineData.size() - 1, entryPrice);
-                            System.in.read();
                         } else {
                             log.info("[#{}]K线[low:{}]，未触发空仓信号[#{}]K的开仓价格{}", klineData.size(), signalK.getLowPrice(), klineData.size() - 1, entryPrice);
                             shortReady = false;
                         }
                     }
 
-                    // 最新K线方向
-                    KLineDirection direction = KlineUtil.getKLineDirection(lastK);
-                    switch (direction) {
-                        // 阳线
-                        case Bull -> {
-                            boolean a = KlineUtil.lessThan(lastK.getOpenPriceValue(), lastK.getEma20());
-                            boolean b = KlineUtil.greaterThan(lastK.getClosePriceValue(), lastK.getEma20());
-                            if (a && b) {
-                                log.info("[#{}]K线收【{}】，[open:{}, close:{}, ema20:{}]，向上穿过EMA20，尝试做多", klineData.size(), Bull.getDesc(), lastK.getOpenPrice(), lastK.getClosePrice(), lastK.getEma20());
-                                longReady = true;
+                    if (position == null) {
+                        // 最新K线方向
+                        KLineDirection direction = KlineUtil.getKLineDirection(lastK);
+                        switch (direction) {
+                            // 阳线
+                            case Bull -> {
+                                boolean a = KlineUtil.lessThan(lastK.getOpenPriceValue(), lastK.getEma20());
+                                boolean b = KlineUtil.greaterThan(lastK.getClosePriceValue(), lastK.getEma20());
+                                if (a && b) {
+                                    log.info("[#{}]K线收【{}】，[open:{}, close:{}, ema20:{}]，向上穿过EMA20，尝试做多", klineData.size(), Bull.getDesc(), lastK.getOpenPrice(), lastK.getClosePrice(), lastK.getEma20());
+                                    longReady = true;
+                                }
                             }
-                        }
-                        // 阴线
-                        case Bear -> {
-                            boolean a = KlineUtil.greaterThan(lastK.getOpenPriceValue(), lastK.getEma20());
-                            boolean b = KlineUtil.lessThan(lastK.getClosePriceValue(), lastK.getEma20());
-                            if (a && b) {
-                                log.info("[#{}]K线收【{}】，[open:{}, close:{}, ema20:{}]，向下穿过EMA20，尝试做空", klineData.size(), Bear.getDesc(), lastK.getOpenPrice(), lastK.getClosePrice(), lastK.getEma20());
-                                shortReady = true;
+                            // 阴线
+                            case Bear -> {
+                                boolean a = KlineUtil.greaterThan(lastK.getOpenPriceValue(), lastK.getEma20());
+                                boolean b = KlineUtil.lessThan(lastK.getClosePriceValue(), lastK.getEma20());
+                                if (a && b) {
+                                    log.info("[#{}]K线收【{}】，[open:{}, close:{}, ema20:{}]，向下穿过EMA20，尝试做空", klineData.size(), Bear.getDesc(), lastK.getOpenPrice(), lastK.getClosePrice(), lastK.getEma20());
+                                    shortReady = true;
+                                }
                             }
                         }
                     }
