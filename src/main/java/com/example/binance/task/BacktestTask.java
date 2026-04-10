@@ -59,9 +59,6 @@ public class BacktestTask {
                 ZoneId zoneId = ZoneId.of("Asia/Shanghai");
                 DateTime s = new DateTime(new DateTime(start).offsetNew(DateField.HOUR_OF_DAY, -96).toLocalDateTime().atZone(zoneId).toInstant());
 
-                // ***********
-                // *** 回测 ***
-                // ***********
                 for (DateTime current = new DateTime(start);
                      current.isBeforeOrEquals(end);
                      current = current.offsetNew(DateField.MINUTE, interval.getMinutes())) {
@@ -184,6 +181,8 @@ public class BacktestTask {
                                 }
                             }
                         }
+                    } else {
+                        // 开始回测
                     }
 
                     log.info("==========================");
