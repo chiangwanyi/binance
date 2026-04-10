@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class Position {
     private String type;             // long/short
+    private BigDecimal margin;       // 仓位保证金
     private BigDecimal entry;        // 入场价
     private BigDecimal sl;           // 止损价
     private BigDecimal tp1;          // 1R止盈价
@@ -24,4 +25,14 @@ public class Position {
     private boolean halfClosed;      // 是否半仓平仓
     private BigDecimal maxMfe;       // 最大浮盈（R倍数）
     private boolean locked;          // 趋势锁定
+
+    @Override
+    public String toString() {
+        return "仓位{" +
+                "type='" + type + '\'' +
+                ", 入场价格=" + entry +
+                ", 止损=" + sl +
+                ", 仓位大小=" + qty +
+                '}';
+    }
 }
