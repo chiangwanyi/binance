@@ -29,6 +29,13 @@ public class BacktestTask {
     @Autowired
     private KlineService klineService;
 
+    private static final BigDecimal balance = new BigDecimal("100");
+    private static final String symbol = "BTCUSDT";
+    private static final BigDecimal riskPerTrade = new BigDecimal("0.02"); // 单笔风险2%
+    private static final BigDecimal makerFeeRates = new BigDecimal("0.0002");  // 挂单费率
+    private static final BigDecimal takerFeeRates = new BigDecimal("0.0005");  // 吃单费率
+    private static final int leverage = 60;
+
     @PostConstruct
     public void tryTest() throws InterruptedException {
         new Thread(() -> {
@@ -47,12 +54,6 @@ public class BacktestTask {
                 // 仓位
                 Position position = null;
 
-                BigDecimal balance = new BigDecimal("100");
-                String symbol = "BTCUSDT";
-                BigDecimal riskPerTrade = new BigDecimal("0.02"); // 单笔风险2%
-                BigDecimal makerFeeRates = new BigDecimal("0.0002");  // 挂单费率
-                BigDecimal takerFeeRates = new BigDecimal("0.0005");  // 吃单费率
-                int leverage = 60;
 
                 log.info("初始资金：{}", balance);
                 BinanceIntervalEnum interval = BinanceIntervalEnum.M30;
@@ -65,7 +66,7 @@ public class BacktestTask {
                     log.info("当前时间：{}", current);
                     DateTime e = new DateTime(current.offsetNew(DateField.MINUTE, -interval.getMinutes()).toLocalDateTime().atZone(zoneId).toInstant());
                     List<KlineEntity> klineData = klineService.getKlineDataBySymbolAndInterval(symbol, interval, s, e, false);
-                    log.info("获取【{}】K线数据，时间段：[{}开盘] -- [{}收盘]，共{}条",interval.getInterval(), s, e, klineData.size());
+//                    log.info("获取【{}】K线数据，时间段：[{}开盘] -- [{}收盘]，共{}条", interval.getInterval(), s, e, klineData.size());
 
                     KlineEntity lastK = klineData.getLast();
                     log.info("[#{}]K线：{}", klineData.size(), lastK);
@@ -79,7 +80,7 @@ public class BacktestTask {
                         if (KlineUtil.greaterThan(lastK.getHighPriceValue(), entryPrice)) {
                             log.info("[#{}]K线[high:{}]，触发多仓信号[#{}]K的开仓价格{}，订单成交，【做多】", klineData.size(), signalK.getHighPrice(), klineData.size() - 1, entryPrice);
                             // 做多的止损价，使用信号K的最低价（稍微下移一点）
-                            BigDecimal stopLossPrice = signalK.getLowPriceValue().subtract(BigDecimal.valueOf(0.5));
+                            BigDecimal stopLossPrice = signalK.getLowPriceValue().subtract(BigDecimal.valueOf(-0.5));
                             // 风险距离
                             BigDecimal riskPrice = entryPrice.subtract(stopLossPrice);
                             // 1R止盈：1倍的风险距离
@@ -94,12 +95,14 @@ public class BacktestTask {
                                             .add(stopLossPrice.multiply(takerFeeRates)))), 4, RoundingMode.HALF_UP);
                             // 挂单开仓手续费
                             BigDecimal makerFee = entryPrice.multiply(makerFeeRates).multiply(qty);
-
-                            log.info("===========>  【做多】开仓参数：开仓价格{}，止损平仓价格{}，最大亏损{}，开仓手续费{}，仓位{}  <===========", entryPrice, stopLossPrice, riskLoss, makerFee, qty);
+                            log.info("===========>  【做多】开仓价格{}，止损平仓价格{}，最大亏损{}，开仓手续费{}，仓位{}  <===========", entryPrice, stopLossPrice, riskLoss, makerFee, qty);
+                            String link = String.format("http://localhost:63342/binance/index.html?links=%s|%s|%s|%s|utc8|%.2f|%.2f|%.2f|%.2f",
+                                    symbol, s.toString("yyyy-MM-dd'T'HH:mm"), e.toString("yyyy-MM-dd'T'HH:mm"), interval.getInterval(),
+                                    stopLossPrice, entryPrice, tp1, tp2);
+                            log.info("回测链接：{}", link);
+                            position = Position.builder().type("long").entry(entryPrice).sl(stopLossPrice).tp1(tp1).tp2(tp2).qty(qty).build();
+                            log.info("===========>  当前【做多】仓位：{}  <===========", position);
                             System.in.read();
-                            position = Position.builder()
-                                    .type("long")
-                                    .entry(entryPrice).build();
                         } else {
                             log.info("[#{}]K线[high:{}]，未触发多仓信号[#{}]K的开仓价格{}", klineData.size(), signalK.getHighPrice(), klineData.size() - 1, entryPrice);
                             longReady = false;
@@ -107,10 +110,36 @@ public class BacktestTask {
                     }
                     // 尝试做空，判断是否能触发
                     if (shortReady) {
+                        // 前一根信号K线
                         KlineEntity signalK = klineData.get(klineData.size() - 2);
-                        BigDecimal entryPrice = signalK.getLowPriceValue();
+                        // 开仓价格（做空要稍微把价格下移保证成交）
+                        BigDecimal entryPrice = signalK.getLowPriceValue().add(BigDecimal.valueOf(-0.5));
                         if (KlineUtil.lessThan(lastK.getLowPriceValue(), entryPrice)) {
                             log.info("[#{}]K线[low:{}]，触发空仓信号[#{}]K的开仓价格{}，订单成交，【做空】", klineData.size(), signalK.getLowPrice(), klineData.size() - 1, entryPrice);
+                            // 做空的止损价，使用信号K的最高价（稍微上移一点）
+                            BigDecimal stopLossPrice = signalK.getHighPriceValue().subtract(BigDecimal.valueOf(0.5));
+                            // 风险距离
+                            BigDecimal riskPrice = entryPrice.subtract(stopLossPrice);
+                            // 1R止盈：1倍的风险距离
+                            BigDecimal tp1 = entryPrice.add(riskPrice);
+                            // 2R止盈：2倍的风险距离
+                            BigDecimal tp2 = entryPrice.add(riskPrice.multiply(BigDecimal.valueOf(2)));
+                            // 最大亏损
+                            BigDecimal riskLoss = balance.multiply(riskPerTrade);
+                            // 仓位
+                            BigDecimal qty = riskLoss.divide(((entryPrice.subtract(stopLossPrice).abs())
+                                    .add(entryPrice.multiply(makerFeeRates)
+                                            .add(stopLossPrice.multiply(takerFeeRates)))), 4, RoundingMode.HALF_UP);
+                            // 挂单开仓手续费
+                            BigDecimal makerFee = entryPrice.multiply(makerFeeRates).multiply(qty);
+                            log.info("===========>  【做空】开仓价格{}，止损平仓价格{}，最大亏损{}，开仓手续费{}，仓位{}  <===========", entryPrice, stopLossPrice, riskLoss, makerFee, qty);
+                            String link = String.format("http://localhost:63342/binance/index.html?links=%s|%s|%s|%s|utc8|%.2f|%.2f|%.2f|%.2f",
+                                    symbol, s.toString("yyyy-MM-dd'T'HH:mm"), e.toString("yyyy-MM-dd'T'HH:mm"), interval.getInterval(),
+                                    stopLossPrice, entryPrice, tp1, tp2);
+                            log.info("回测链接：{}", link);
+                            position = Position.builder().type("short").entry(entryPrice).sl(stopLossPrice).tp1(tp1).tp2(tp2).qty(qty).build();
+                            log.info("===========>  当前【做空】仓位：{}  <===========", position);
+                            System.in.read();
                         } else {
                             log.info("[#{}]K线[low:{}]，未触发空仓信号[#{}]K的开仓价格{}", klineData.size(), signalK.getLowPrice(), klineData.size() - 1, entryPrice);
                             shortReady = false;

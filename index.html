@@ -1443,7 +1443,12 @@
                     if (!visibleRange) return;
 
                     this.currentKlineData.forEach((k, index) => {
-                        const barIndex = (index % 81) + 1;
+                        let barIndex = -1;
+                        if (this.interval === '5m') {
+                            barIndex = (index % 81) + 1
+                        } else {
+                            barIndex = (index + 1)
+                        }
 
                         // ✅ 只显示偶数
                         if (barIndex % 2 !== 0) return;
