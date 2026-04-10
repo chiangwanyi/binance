@@ -44,4 +44,8 @@ public class Position {
                 ", 仓位大小=" + qty +
                 '}';
     }
+
+    public int getDirection() {
+        return type.equals("long") ? 1 : -1;
+    }
 }

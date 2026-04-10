@@ -19,11 +19,11 @@ public class DecisionEngine {
         BigDecimal B = mode.getThresholdB();
         BigDecimal C = mode.getThresholdC();
 
-        BigDecimal price =  pos.getType().equals("long") ? k.getHighPriceValue() : k.getLowPriceValue();
+        BigDecimal extremePrice =  pos.getDirection() > 0 ? k.getHighPriceValue() : k.getLowPriceValue();
+        BigDecimal closePrice = k.getClosePriceValue();
 
-        // ===== 止损 =====
-        if (pos.getType().equals("long") &&
-                KlineUtil.lessThan(price, pos.getSl())) {
+        // ===== 做多止损（收盘价或者极值价） =====
+        if (pos.getType().equals("long") && KlineUtil.lessThan(price, pos.getSl())) {
             close(pos, price, balance, stats);
             return;
         }
